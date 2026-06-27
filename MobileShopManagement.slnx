@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="MobileShop.Api/MobileShop.Api.csproj" />
+  <Project Path="MobileShop.Application/MobileShop.Application.csproj" />
+  <Project Path="MobileShop.Domain/MobileShop.Domain.csproj" />
+  <Project Path="MobileShop.Infrastructure/MobileShop.Infrastructure.csproj" />
+</Solution>
