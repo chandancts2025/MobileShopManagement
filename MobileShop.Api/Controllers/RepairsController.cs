@@ -7,15 +7,25 @@ using MobileShop.Application.Interfaces.Services;
 namespace MobileShop.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = "SuperAdmin,Admin,Operator")]
+[Authorize]
 [Route("api/[controller]")]
 public class RepairsController(IRepairService repairService) : ControllerBase
 {
+    [HttpGet("track/{ticketOrPhone}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> TrackRepairTicket(string ticketOrPhone, CancellationToken cancellationToken)
+    {
+        var ticket = await repairService.GetRepairTicketByNumberAsync(ticketOrPhone, cancellationToken);
+        return ticket is null ? NotFound("No repair ticket found for this ticket number or phone number.") : Ok(ticket);
+    }
+
     [HttpGet]
+    [Authorize(Roles = "SuperAdmin,Admin,Operator")]
     public async Task<IActionResult> GetRepairTickets([FromQuery] QueryParameters queryParameters, CancellationToken cancellationToken) =>
         Ok(await repairService.GetRepairTicketsAsync(queryParameters, cancellationToken));
 
     [HttpGet("{id:guid}")]
+    [Authorize(Roles = "SuperAdmin,Admin,Operator")]
     public async Task<IActionResult> GetRepairTicket(Guid id, CancellationToken cancellationToken)
     {
         var ticket = await repairService.GetRepairTicketAsync(id, cancellationToken);

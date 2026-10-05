@@ -482,7 +482,7 @@ export interface ProductReviewDto {
   helpfulCount: number;
   unhelpfulCount: number;
   isApproved: boolean;
-  imageUrls: string[];
+  imageUrls?: string[];
   createdAtUtc: string;
 }
 
@@ -566,6 +566,20 @@ export interface LoyaltyBenefitsDto {
   discountPercentage: number;
   description: string;
   pointsRequiredForUpgrade: number;
+}
+
+export interface CreateReviewRequest {
+  productId: string;
+  rating: number;
+  title: string;
+  comment: string;
+  imageUrls?: string[];
+}
+
+export interface SearchFilterOptionsDto {
+  categories: { id: string; name: string }[];
+  brands: { id: string; name: string }[];
+  priceRange: { min: number; max: number };
 }
 
 export interface SelectOption<T = string | number | boolean> {

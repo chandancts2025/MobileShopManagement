@@ -1,10 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 
 import { ApiService, apiErrorMessage } from '../core/api.service';
 import { NotificationDto, NotificationSummaryDto } from '../core/api.models';
-import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-notifications',
@@ -13,13 +13,15 @@ import { RouterLink } from '@angular/router';
   template: `
     <div class="page-header">
       <div>
-        <h2>Notifications</h2>
-        <p>Stay updated with your orders and account activity</p>
+        <h2>🔔 Notifications</h2>
+        <p>Live updates on your orders, price alerts, repair status, and promotions</p>
       </div>
       <div class="toolbar-right">
-        <span class="badge">{{ summary?.totalUnread ?? 0 }} Unread</span>
+        <span class="badge" [class.warn]="(summary?.totalUnread ?? 0) > 0">
+          {{ summary?.totalUnread ?? 0 }} Unread
+        </span>
         @if (hasUnread()) {
-          <button class="btn ghost" (click)="markAllAsRead()">Mark all as read</button>
+          <button class="btn primary" (click)="markAllAsRead()">Mark all as read</button>
         }
       </div>
     </div>
@@ -28,35 +30,55 @@ import { RouterLink } from '@angular/router';
       <div class="message error" style="margin-bottom: 14px;">{{ error }}</div>
     }
 
+    <!-- Filter chips -->
+    <div class="panel" style="margin-bottom: 16px;">
+      <div class="panel-body toolbar" style="padding: 10px 16px;">
+        <span class="muted" style="font-size: 0.85rem; font-weight: 600;">Filter:</span>
+        <button class="btn ghost" [class.active-pill]="activeFilter === 'all'" (click)="setFilter('all')">
+          All ({{ notifications.length }})
+        </button>
+        <button class="btn ghost" [class.active-pill]="activeFilter === 'unread'" (click)="setFilter('unread')">
+          Unread ({{ (summary?.totalUnread ?? 0) }})
+        </button>
+      </div>
+    </div>
+
     <div class="panel" [class.loading]="loading">
-      <div class="panel-body">
-        @if (notifications.length === 0) {
-          <div class="empty-state">No notifications yet. We'll notify you about orders and important updates.</div>
+      <div class="panel-body" style="padding: 0;">
+        @if (filteredNotifications.length === 0) {
+          <div class="empty-state" style="padding: 48px 20px;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🔕</span>
+            <h3>No notifications to display</h3>
+            <p class="muted">You're all caught up! Order status updates and price drop alerts will appear here.</p>
+          </div>
         } @else {
-          <div style="max-height: 600px; overflow-y: auto;">
-            @for (notification of notifications; track notification.id) {
-              <div [class]="'notification-item ' + (notification.isRead ? 'read' : 'unread')"
-                [style.padding]="'12px'"
-                [style.border-bottom]="'1px solid var(--line)'"
-                [style.cursor]="'pointer'">
-                <div style="display: flex; justify-content: space-between; align-items: start;">
-                  <div style="flex: 1;">
+          <div>
+            @for (notification of filteredNotifications; track notification.id) {
+              <div class="notification-row" [class.unread]="!notification.isRead">
+                <div class="notif-icon">
+                  {{ getNotificationIcon(notification.title) }}
+                </div>
+                <div class="notif-content">
+                  <div class="notif-head">
                     <strong>{{ notification.title }}</strong>
-                    <p style="margin: 4px 0; color: var(--muted); font-size: 0.9rem;">
-                      {{ notification.message }}
-                    </p>
-                    <small style="color: var(--muted);">{{ formatDate(notification.createdAtUtc) }}</small>
+                    <span class="notif-time">{{ formatDate(notification.createdAtUtc) }}</span>
                   </div>
-                  <div style="display: flex; gap: 8px;">
-                    @if (!notification.isRead) {
-                      <button class="btn ghost" (click)="markAsRead(notification.id)" style="padding: 4px 8px;">
-                        Mark read
-                      </button>
-                    }
-                    <button class="btn danger" (click)="delete(notification.id)" style="padding: 4px 8px;">
-                      Delete
+                  <p class="notif-body">{{ notification.message }}</p>
+                  @if (notification.actionUrl) {
+                    <a [routerLink]="notification.actionUrl" class="btn ghost" style="padding: 3px 8px; font-size: 0.8rem; margin-top: 6px; display: inline-flex;">
+                      View Details →
+                    </a>
+                  }
+                </div>
+                <div class="notif-actions">
+                  @if (!notification.isRead) {
+                    <button class="btn ghost" (click)="markAsRead(notification.id)" title="Mark as read" style="padding: 4px 8px; font-size: 0.8rem;">
+                      ✓ Read
                     </button>
-                  </div>
+                  }
+                  <button class="btn danger ghost" (click)="delete(notification.id)" title="Delete notification" style="padding: 4px 8px; font-size: 0.8rem;">
+                    ✕
+                  </button>
                 </div>
               </div>
             }
@@ -66,11 +88,61 @@ import { RouterLink } from '@angular/router';
     </div>
   `,
   styles: [`
-    .notification-item.unread {
-      background-color: var(--info-soft);
+    .active-pill {
+      background: var(--primary-soft) !important;
+      color: var(--primary-strong) !important;
+      font-weight: 700;
     }
-    .notification-item.read {
-      background-color: transparent;
+    .notification-row {
+      display: flex;
+      gap: 14px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      align-items: flex-start;
+      transition: background 0.15s ease;
+    }
+    .notification-row:last-child {
+      border-bottom: none;
+    }
+    .notification-row.unread {
+      background: rgba(22, 163, 74, 0.05);
+      border-left: 3px solid var(--primary);
+    }
+    .notif-icon {
+      font-size: 1.4rem;
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      background: var(--surface-2);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+    .notif-content {
+      flex: 1;
+      min-width: 0;
+    }
+    .notif-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: baseline;
+    }
+    .notif-time {
+      font-size: 0.78rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .notif-body {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.4;
+    }
+    .notif-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
     }
   `]
 })
@@ -79,6 +151,14 @@ export class NotificationsComponent implements OnInit {
   summary: NotificationSummaryDto | null = null;
   loading = false;
   error = '';
+  activeFilter: 'all' | 'unread' = 'all';
+
+  get filteredNotifications(): NotificationDto[] {
+    if (this.activeFilter === 'unread') {
+      return this.notifications.filter((n) => !n.isRead);
+    }
+    return this.notifications;
+  }
 
   constructor(private readonly api: ApiService) {}
 
@@ -90,13 +170,15 @@ export class NotificationsComponent implements OnInit {
     this.loading = true;
     this.error = '';
 
-    this.api.get<NotificationDto[]>('/api/notifications').subscribe({
-      next: (notifications) => this.notifications = notifications,
+    this.api.list<NotificationDto>('/api/notifications', { pageNumber: 1, pageSize: 50 }).subscribe({
+      next: (result) => {
+        this.notifications = result.items;
+        this.loading = false;
+      },
       error: (error) => {
         this.error = apiErrorMessage(error);
         this.loading = false;
-      },
-      complete: () => this.loading = false
+      }
     });
 
     this.api.get<NotificationSummaryDto>('/api/notifications/summary').subscribe({
@@ -105,23 +187,39 @@ export class NotificationsComponent implements OnInit {
     });
   }
 
+  setFilter(filter: 'all' | 'unread'): void {
+    this.activeFilter = filter;
+  }
+
   markAsRead(id: string): void {
     this.api.post(`/api/notifications/${id}/mark-read`, {}).subscribe({
-      next: () => this.loadNotifications(),
+      next: () => {
+        this.notifications = this.notifications.map((n) => n.id === id ? { ...n, isRead: true } : n);
+        if (this.summary && this.summary.totalUnread > 0) {
+          this.summary.totalUnread--;
+        }
+      },
       error: (error) => this.error = apiErrorMessage(error)
     });
   }
 
   markAllAsRead(): void {
     this.api.post('/api/notifications/mark-all-read', {}).subscribe({
-      next: () => this.loadNotifications(),
+      next: () => {
+        this.notifications = this.notifications.map((n) => ({ ...n, isRead: true }));
+        if (this.summary) {
+          this.summary.totalUnread = 0;
+        }
+      },
       error: (error) => this.error = apiErrorMessage(error)
     });
   }
 
   delete(id: string): void {
     this.api.delete(`/api/notifications/${id}`).subscribe({
-      next: () => this.loadNotifications(),
+      next: () => {
+        this.notifications = this.notifications.filter((n) => n.id !== id);
+      },
       error: (error) => this.error = apiErrorMessage(error)
     });
   }
@@ -130,8 +228,29 @@ export class NotificationsComponent implements OnInit {
     return this.notifications.some((notification) => !notification.isRead);
   }
 
+  getNotificationIcon(title: string): string {
+    const t = (title || '').toLowerCase();
+    if (t.includes('order')) return '📦';
+    if (t.includes('price') || t.includes('discount')) return '🏷️';
+    if (t.includes('repair')) return '🔧';
+    if (t.includes('stock')) return '📊';
+    if (t.includes('loyalty') || t.includes('point')) return '⭐';
+    return '🔔';
+  }
+
   formatDate(date: string): string {
+    if (!date) return '';
     const d = new Date(date);
-    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    if (diffHours < 1) {
+      const diffMins = Math.max(1, Math.floor(diffMs / (1000 * 60)));
+      return `${diffMins}m ago`;
+    }
+    if (diffHours < 24) {
+      return `${diffHours}h ago`;
+    }
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   }
 }

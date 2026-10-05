@@ -12,6 +12,7 @@ namespace MobileShop.Api.Controllers;
 public class CategoriesController(ILookupService lookupService) : ControllerBase
 {
     [HttpGet]
+    [AllowAnonymous]
     public async Task<IActionResult> GetCategories([FromQuery] QueryParameters queryParameters, CancellationToken cancellationToken) =>
         Ok(await lookupService.GetCategoriesAsync(queryParameters, cancellationToken));
 

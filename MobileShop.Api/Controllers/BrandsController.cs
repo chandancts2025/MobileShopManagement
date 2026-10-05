@@ -12,6 +12,7 @@ namespace MobileShop.Api.Controllers;
 public class BrandsController(ILookupService lookupService) : ControllerBase
 {
     [HttpGet]
+    [AllowAnonymous]
     public async Task<IActionResult> GetBrands([FromQuery] QueryParameters queryParameters, CancellationToken cancellationToken) =>
         Ok(await lookupService.GetBrandsAsync(queryParameters, cancellationToken));
 

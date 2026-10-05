@@ -72,6 +72,42 @@ public class ReviewService(MobileShopDbContext dbContext) : IReviewService
         };
     }
 
+    public async Task<PagedResult<ProductReviewDto>> GetAllReviewsAsync(QueryParameters queryParameters, bool? isApproved, CancellationToken cancellationToken)
+    {
+        IQueryable<ProductReview> query = dbContext.ProductReviews
+            .Include(r => r.Product)
+            .Include(r => r.CustomerProfile)
+            .ThenInclude(c => c.User)
+            .AsNoTracking();
+
+        if (isApproved.HasValue)
+        {
+            query = query.Where(r => r.IsApproved == isApproved.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(queryParameters.Search))
+        {
+            var search = queryParameters.Search.Trim().ToLower();
+            query = query.Where(r => r.Title.ToLower().Contains(search) || r.Comment.ToLower().Contains(search) || r.Product.Name.ToLower().Contains(search));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderByDescending(r => r.CreatedAtUtc)
+            .Skip((queryParameters.PageNumber - 1) * queryParameters.PageSize)
+            .Take(queryParameters.PageSize)
+            .Select(r => MapToDto(r))
+            .ToListAsync(cancellationToken);
+
+        return new PagedResult<ProductReviewDto>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            PageNumber = queryParameters.PageNumber,
+            PageSize = queryParameters.PageSize
+        };
+    }
+
     public async Task<ProductReviewDto?> GetReviewAsync(Guid reviewId, CancellationToken cancellationToken)
     {
         return await dbContext.ProductReviews

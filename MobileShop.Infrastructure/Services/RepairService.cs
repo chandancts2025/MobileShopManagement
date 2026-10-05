@@ -53,6 +53,16 @@ public class RepairService(MobileShopDbContext dbContext, IAuditLogService audit
         return ticket is null ? null : Map(ticket);
     }
 
+    public async Task<RepairTicketDto?> GetRepairTicketByNumberAsync(string ticketNumber, CancellationToken cancellationToken = default)
+    {
+        var trimmed = ticketNumber.Trim().ToLowerInvariant();
+        var ticket = await dbContext.RepairTickets
+            .Where(x => !x.IsDeleted && (x.TicketNumber.ToLower() == trimmed || x.PhoneNumber == ticketNumber.Trim()))
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        return ticket is null ? null : Map(ticket);
+    }
+
     public async Task<RepairTicketDto> CreateRepairTicketAsync(CreateRepairTicketRequest request, string performedBy, CancellationToken cancellationToken = default)
     {
         if (request.CustomerProfileId.HasValue)

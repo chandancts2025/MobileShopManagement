@@ -13,6 +13,21 @@ namespace MobileShop.Api.Controllers;
 [Route("api/[controller]")]
 public class ReviewsController(IReviewService reviewService, MobileShopDbContext dbContext) : ControllerBase
 {
+    [HttpGet]
+    [Authorize(Roles = "SuperAdmin,Admin,Operator")]
+    public async Task<IActionResult> GetAllReviews([FromQuery] QueryParameters queryParameters, [FromQuery] bool? isApproved = null, CancellationToken cancellationToken = default)
+    {
+        return Ok(await reviewService.GetAllReviewsAsync(queryParameters, isApproved, cancellationToken));
+    }
+
+    [HttpDelete("admin/{id:guid}")]
+    [Authorize(Roles = "SuperAdmin,Admin")]
+    public async Task<IActionResult> AdminDeleteReview(Guid id, CancellationToken cancellationToken)
+    {
+        var performedBy = User.Identity?.Name ?? "api";
+        return await reviewService.RejectReviewAsync(id, performedBy, cancellationToken) ? NoContent() : NotFound();
+    }
+
     [HttpGet("product/{productId:guid}")]
     [AllowAnonymous]
     public async Task<IActionResult> GetProductReviews(Guid productId, [FromQuery] QueryParameters queryParameters, CancellationToken cancellationToken)

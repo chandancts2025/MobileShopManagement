@@ -11,6 +11,7 @@ public interface IReviewService
     Task<ProductReviewDto> CreateReviewAsync(CreateReviewRequest request, Guid customerProfileId, string performedBy, CancellationToken cancellationToken);
     Task<ProductReviewDto?> UpdateReviewAsync(Guid reviewId, UpdateReviewRequest request, Guid customerProfileId, string performedBy, CancellationToken cancellationToken);
     Task<bool> DeleteReviewAsync(Guid reviewId, Guid customerProfileId, string performedBy, CancellationToken cancellationToken);
+    Task<PagedResult<ProductReviewDto>> GetAllReviewsAsync(QueryParameters queryParameters, bool? isApproved, CancellationToken cancellationToken);
     Task<ReviewSummaryDto> GetReviewSummaryAsync(Guid productId, CancellationToken cancellationToken);
     Task<bool> MarkHelpfulAsync(Guid reviewId, CancellationToken cancellationToken);
     Task<bool> MarkUnhelpfulAsync(Guid reviewId, CancellationToken cancellationToken);

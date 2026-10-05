@@ -32,7 +32,7 @@ public class SearchService(MobileShopDbContext dbContext) : ISearchService
             var lowerTerm = searchTerm.ToLower();
             query = query.Where(p =>
                 p.Name.ToLower().Contains(lowerTerm) ||
-                p.Description.ToLower().Contains(lowerTerm) ||
+                (p.Description != null && p.Description.ToLower().Contains(lowerTerm)) ||
                 p.Sku.ToLower().Contains(lowerTerm));
         }
 

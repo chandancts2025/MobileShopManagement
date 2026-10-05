@@ -9,7 +9,7 @@ namespace MobileShop.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [AllowAnonymous]
-public class SearchController(ISearchService searchService) : ControllerBase
+public class SearchController(ISearchService searchService, ILookupService lookupService) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> Search(
@@ -19,7 +19,7 @@ public class SearchController(ISearchService searchService) : ControllerBase
         [FromQuery] decimal? minPrice = null,
         [FromQuery] decimal? maxPrice = null,
         [FromQuery] decimal? minRating = null,
-        [FromQuery] QueryParameters queryParameters = null,
+        [FromQuery] QueryParameters? queryParameters = null,
         CancellationToken cancellationToken = default)
     {
         queryParameters ??= new QueryParameters();
@@ -30,15 +30,31 @@ public class SearchController(ISearchService searchService) : ControllerBase
 
     [HttpGet("suggestions")]
     public async Task<IActionResult> GetSuggestions(
-        [FromQuery] string term,
+        [FromQuery] string? term = null,
+        [FromQuery] string? query = null,
         [FromQuery] int count = 10,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(term))
+        var searchTerm = !string.IsNullOrWhiteSpace(term) ? term : query ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(searchTerm))
             return Ok(new List<string>());
 
-        var suggestions = await searchService.GetSearchSuggestionsAsync(term, count, cancellationToken);
+        var suggestions = await searchService.GetSearchSuggestionsAsync(searchTerm, count, cancellationToken);
         return Ok(suggestions);
+    }
+
+    [HttpGet("filter-options")]
+    [HttpGet("filters")]
+    public async Task<IActionResult> GetFilterOptions(CancellationToken cancellationToken)
+    {
+        var categoriesResult = await lookupService.GetCategoriesAsync(new QueryParameters { PageSize = 100 }, cancellationToken);
+        var brandsResult = await lookupService.GetBrandsAsync(new QueryParameters { PageSize = 100 }, cancellationToken);
+
+        return Ok(new
+        {
+            categories = categoriesResult.Items.Select(c => new { id = c.Id.ToString(), name = c.Name }),
+            brands = brandsResult.Items.Select(b => new { id = b.Id.ToString(), name = b.Name })
+        });
     }
 
     [HttpGet("filters/categories")]

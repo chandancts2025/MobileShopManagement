@@ -53,6 +53,15 @@ export const routes: Routes = [
         canMatch: [authGuard, roleGuard([...staffRoles, 'Customer'])],
         loadComponent: () => import('./pages/order-tracking.component').then((m) => m.OrderTrackingComponent)
       },
+      {
+        path: 'repair-tracking',
+        loadComponent: () => import('./pages/repair-tracking.component').then((m) => m.RepairTrackingComponent)
+      },
+      {
+        path: 'admin/reviews',
+        canMatch: [authGuard, roleGuard([...staffRoles])],
+        loadComponent: () => import('./pages/reviews-admin.component').then((m) => m.ReviewsAdminComponent)
+      },
       { path: 'orders', redirectTo: 'sales' },
       { path: 'purchase-orders', redirectTo: 'purchasing' },
       {
