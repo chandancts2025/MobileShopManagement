@@ -23,11 +23,18 @@ import {
     @if (config; as cfg) {
       <div class="page-header">
         <div>
-          <h2>{{ cfg.title }}</h2>
+          <h2>
+            {{ cfg.title }}
+            <span class="badge" style="margin-left: 8px; font-size: 0.78rem; font-weight: 600;">
+              {{ items.length }} records
+            </span>
+          </h2>
           <p>{{ cfg.description }}</p>
         </div>
         @if (canCreate()) {
-          <button class="btn primary" type="button" (click)="startCreate()">New {{ singularTitle(cfg.title) }}</button>
+          <button class="btn primary" type="button" (click)="startCreate()">
+            ✨ + New {{ singularTitle(cfg.title) }}
+          </button>
         }
       </div>
 
@@ -41,14 +48,17 @@ import {
       <div class="split">
         <section class="panel" [class.loading]="loading">
           <div class="panel-header">
-            <div class="toolbar-left">
-              <input class="input" style="width: min(360px, 100%);" name="search" [(ngModel)]="query.search" (keyup.enter)="load()" placeholder="Search">
+            <div class="toolbar-left" style="flex: 1;">
+              <input class="input" style="max-width: 360px;" name="search" [(ngModel)]="query.search" (keyup.enter)="load()" [placeholder]="'🔍 Search ' + cfg.title.toLowerCase() + '...'">
               <button class="btn" type="button" (click)="load()">Search</button>
+              @if (query.search) {
+                <button class="btn ghost" type="button" (click)="query.search = ''; load()">Clear</button>
+              }
             </div>
             <div class="toolbar-right">
-              <button class="btn ghost" type="button" (click)="previousPage()" [disabled]="query.pageNumber <= 1">Previous</button>
+              <button class="btn ghost" type="button" (click)="previousPage()" [disabled]="query.pageNumber <= 1">← Prev</button>
               <span class="badge">Page {{ query.pageNumber }}</span>
-              <button class="btn ghost" type="button" (click)="nextPage()" [disabled]="items.length < query.pageSize">Next</button>
+              <button class="btn ghost" type="button" (click)="nextPage()" [disabled]="items.length < query.pageSize">Next →</button>
             </div>
           </div>
 
@@ -59,31 +69,60 @@ import {
                   @for (column of cfg.columns; track column.key) {
                     <th>{{ column.label }}</th>
                   }
-                  <th>Actions</th>
+                  <th style="text-align: right; min-width: 130px;">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 @for (item of items; track trackRecord($index, item)) {
-                  <tr>
+                  <tr [class.active-row]="isRowActive(item)">
                     @for (column of cfg.columns; track column.key) {
-                      <td>{{ cell(item, column.key) }}</td>
+                      <td>
+                        @if (isSku(column.key)) {
+                          <span class="code-pill">{{ cell(item, column.key) }}</span>
+                        } @else if (isBrand(column.key)) {
+                          <span class="cell-chip brand">{{ cell(item, column.key) }}</span>
+                        } @else if (isCategory(column.key)) {
+                          <span class="cell-chip category">{{ cell(item, column.key) }}</span>
+                        } @else if (isPrice(column.key)) {
+                          <span class="cell-price">{{ cell(item, column.key) }}</span>
+                        } @else if (isStock(column.key)) {
+                          <span class="cell-stock" [class]="stockBadgeClass(item[column.key])">
+                            {{ cell(item, column.key) }}
+                          </span>
+                        } @else {
+                          {{ cell(item, column.key) }}
+                        }
+                      </td>
                     }
-                    <td class="actions">
+                    <td class="actions" style="text-align: right;">
                       @if (canUpdate()) {
-                        <button class="btn ghost" type="button" (click)="startEdit(item)">Edit</button>
+                        <button class="btn ghost" type="button" (click)="startEdit(item)" title="Edit this record">
+                          ✏️ Edit
+                        </button>
                       }
                       @if (canDelete()) {
-                        <button class="btn danger" type="button" (click)="deleteItem(item)">Delete</button>
+                        <button class="btn danger" type="button" (click)="deleteItem(item)" title="Delete this record" style="margin-left: 4px;">
+                          🗑️
+                        </button>
                       }
                       @if (!canUpdate() && !canDelete()) {
-                        <span class="muted">View only</span>
+                        <span class="muted" style="font-size: 0.8rem;">View only</span>
                       }
                     </td>
                   </tr>
                 } @empty {
                   <tr>
                     <td [attr.colspan]="cfg.columns.length + 1">
-                      <div class="empty-state">No records found.</div>
+                      <div class="empty-state">
+                        <div style="font-size: 2.2rem; margin-bottom: 8px;">📦</div>
+                        <strong>No {{ cfg.title.toLowerCase() }} found</strong>
+                        <p>Try refining your search keyword or add a new record to get started.</p>
+                        @if (canCreate()) {
+                          <button class="btn primary" type="button" style="margin-top: 14px;" (click)="startCreate()">
+                            + Add New {{ singularTitle(cfg.title) }}
+                          </button>
+                        }
+                      </div>
                     </td>
                   </tr>
                 }
@@ -94,21 +133,33 @@ import {
 
         <aside class="panel">
           <div class="panel-header">
-            <strong>{{ formMode === 'update' ? 'Edit record' : 'Create record' }}</strong>
+            <div>
+              <strong style="font-size: 1rem; color: #0f172a;">
+                {{ formMode === 'update' ? '✏️ Edit ' + singularTitle(cfg.title) : '✨ New ' + singularTitle(cfg.title) }}
+              </strong>
+              @if (editingId) {
+                <div style="font-size: 0.76rem; color: #64748b; font-family: monospace;">ID: #{{ editingId }}</div>
+              }
+            </div>
             @if (formOpen) {
-              <button class="btn ghost" type="button" (click)="closeForm()">Close</button>
+              <button class="btn ghost" type="button" (click)="closeForm()" style="padding: 4px 10px; font-size: 0.82rem;">✕ Close</button>
             }
           </div>
           <div class="panel-body">
             @if (cfg.readOnly) {
-              <p class="muted">This endpoint is read-only in the UI.</p>
+              <p class="muted">This endpoint is read-only in the administrative console.</p>
             } @else if (formOpen) {
               <form class="grid" #formRef="ngForm" (ngSubmit)="save(formRef.valid ?? false)">
                 <div class="grid two">
                   @for (field of visibleFields(); track field.key) {
-                    <label class="field" [class.check-field]="field.type === 'checkbox'">
+                    <label class="field" [class.check-field]="field.type === 'checkbox'" [style.grid-column]="field.type === 'textarea' ? 'span 2' : 'auto'">
                       @if (field.type !== 'checkbox') {
-                        <span>{{ field.label }}</span>
+                        <span>
+                          {{ field.label }}
+                          @if (field.required) {
+                            <span class="required-star">*</span>
+                          }
+                        </span>
                       }
 
                       @switch (field.type) {
@@ -117,7 +168,7 @@ import {
                         }
                         @case ('select') {
                           <select class="select" [name]="field.key" [(ngModel)]="form[field.key]" [required]="field.required || false">
-                            <option [ngValue]="null">Select</option>
+                            <option [ngValue]="null">-- Select {{ field.label }} --</option>
                             @for (option of fieldOptions(field); track option.label + option.value) {
                               <option [ngValue]="option.value">{{ option.label }}</option>
                             }
@@ -147,12 +198,24 @@ import {
                   }
                 </div>
 
-                <button class="btn primary" type="submit" [disabled]="formRef.invalid || saving">
-                  {{ saving ? 'Saving...' : 'Save' }}
-                </button>
+                <div style="display: flex; gap: 10px; margin-top: 10px; padding-top: 14px; border-top: 1px solid #e2e8f0;">
+                  <button class="btn primary" type="submit" [disabled]="formRef.invalid || saving" style="flex: 1;">
+                    {{ saving ? 'Saving...' : '💾 Save ' + singularTitle(cfg.title) }}
+                  </button>
+                  <button class="btn ghost" type="button" (click)="closeForm()">Cancel</button>
+                </div>
               </form>
             } @else {
-              <p class="muted">Select a row to edit, or create a new record when your role allows it.</p>
+              <div style="text-align: center; padding: 24px 10px; color: #64748b;">
+                <div style="font-size: 2.2rem; margin-bottom: 8px;">📝</div>
+                <strong style="color: #1e293b; display: block; margin-bottom: 4px;">No Record Selected</strong>
+                <p style="font-size: 0.88rem; margin: 0 0 16px;">Select an item from the table to inspect/edit its details, or click below to create a brand new entry.</p>
+                @if (canCreate()) {
+                  <button class="btn primary" type="button" (click)="startCreate()">
+                    + Add New {{ singularTitle(cfg.title) }}
+                  </button>
+                }
+              </div>
             }
           </div>
         </aside>
@@ -386,6 +449,38 @@ export class ResourcePageComponent implements OnInit {
 
   singularTitle(title: string): string {
     return title.endsWith('s') ? title.slice(0, -1) : title;
+  }
+
+  isSku(key: string): boolean {
+    return key.toLowerCase() === 'sku';
+  }
+
+  isPrice(key: string): boolean {
+    const k = key.toLowerCase();
+    return k.includes('price') || k.includes('amount') || k.includes('cost');
+  }
+
+  isStock(key: string): boolean {
+    return key === 'quantityOnHand' || key === 'stock';
+  }
+
+  isBrand(key: string): boolean {
+    return key === 'brandName';
+  }
+
+  isCategory(key: string): boolean {
+    return key === 'categoryName';
+  }
+
+  stockBadgeClass(val: unknown): string {
+    const num = Number(val);
+    if (isNaN(num) || num <= 0) return 'out';
+    if (num <= 5) return 'low';
+    return 'good';
+  }
+
+  isRowActive(item: ResourceRecord): boolean {
+    return Boolean(this.editingId && String(item['id'] ?? '') === this.editingId);
   }
 
   private loadLookups(): void {

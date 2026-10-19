@@ -12,6 +12,12 @@ public interface IEmailService
 
     Task SendLowStockAlertAsync(string toEmail, string productName, int currentStock, int reorderLevel, CancellationToken cancellationToken);
 
+    Task SendOrderStatusUpdateAsync(string toEmail, string customerName, string orderNumber, string status, CancellationToken cancellationToken);
+
+    Task SendRepairTicketNotificationAsync(string toEmail, string customerName, string ticketNumber, string device, string status, decimal estimatedCost, CancellationToken cancellationToken);
+
+    Task SendWelcomeEmailAsync(string toEmail, string customerName, CancellationToken cancellationToken);
+
     Task SendEmailAsync(string toEmail, string subject, string htmlBody, CancellationToken cancellationToken);
 
     Task SendBulkEmailAsync(List<string> recipients, string subject, string htmlBody, CancellationToken cancellationToken);

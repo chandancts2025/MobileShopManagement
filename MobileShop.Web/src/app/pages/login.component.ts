@@ -51,7 +51,7 @@ import { AuthService } from '../core/auth.service';
           </button>
 
           <div class="toolbar">
-            <button class="btn ghost" type="button" (click)="fill('superadmin@mobileshop.local', 'SuperAdmin@123')">Super admin</button>
+            <button class="btn ghost" type="button" (click)="fill('chandankr.mandal87@gmail.com', 'SuperAdmin@123')">Super admin</button>
             <button class="btn ghost" type="button" (click)="fill('admin@mobileshop.local', 'Admin@123')">Admin</button>
           </div>
 
@@ -64,7 +64,7 @@ import { AuthService } from '../core/auth.service';
 })
 export class LoginComponent {
   model = {
-    email: 'superadmin@mobileshop.local',
+    email: 'chandankr.mandal87@gmail.com',
     password: 'SuperAdmin@123'
   };
   loading = false;

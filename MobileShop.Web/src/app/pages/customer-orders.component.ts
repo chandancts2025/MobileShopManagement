@@ -14,10 +14,13 @@ import { LocalOrderHistoryItem, readOrderHistory } from './cart.component';
   template: `
     <div class="page-header">
       <div>
-        <h2>Customer orders</h2>
-        <p>View your order history, download invoices, and print bills from your account.</p>
+        <h2>
+          My Purchase Orders & Receipts
+          <span class="badge" style="margin-left: 8px; font-size: 0.78rem;">{{ orders.length || history.length }} orders</span>
+        </h2>
+        <p>Review completed handset purchases, download official GST tax invoices, and reprint 80mm POS thermal slips.</p>
       </div>
-      <a class="btn primary" routerLink="/catalog">Shop catalog</a>
+      <a class="btn primary" routerLink="/catalog">🛍️ Shop Catalog</a>
     </div>
 
     @if (error) {
@@ -27,43 +30,68 @@ import { LocalOrderHistoryItem, readOrderHistory } from './cart.component';
       <div class="message success" style="margin-bottom: 14px;">{{ success }}</div>
     }
 
-    <div class="panel">
-      <div class="panel-header">
-        <strong>Recent orders</strong>
+    <div class="panel" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);">
+      <div class="panel-header" style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+        <div>
+          <strong style="font-size: 1rem; color: #0f172a;">📦 Order History</strong>
+          <p style="margin: 2px 0 0; font-size: 0.78rem; color: #64748b;">Your previous retail transactions and online orders</p>
+        </div>
+        <button class="btn ghost" type="button" (click)="loadOrders()">🔄 Refresh</button>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Order</th>
-              <th>Total</th>
-              <th>Created</th>
-              <th>Action</th>
+              <th>Order #</th>
+              <th>Total Billed</th>
+              <th>Date & Time</th>
+              <th style="text-align: right; min-width: 140px;">Tax Invoices & Slips</th>
             </tr>
           </thead>
           <tbody>
             @for (order of orders; track order.id) {
               <tr>
-                <td>{{ order.orderNumber }}</td>
-                <td>{{ money(order.totalAmount) }}</td>
-                <td>{{ dateTime(order.createdAtUtc) }}</td>
                 <td>
-                  <button class="btn ghost" type="button" (click)="printOrder(order)">Print bill</button>
+                  <span class="code-pill">#{{ order.orderNumber }}</span>
+                </td>
+                <td>
+                  <strong class="cell-price">{{ money(order.totalAmount) }}</strong>
+                </td>
+                <td style="font-size: 0.84rem; color: #475569;">{{ dateTime(order.createdAtUtc) }}</td>
+                <td style="text-align: right;">
+                  <button class="btn ghost" type="button" style="padding: 4px 10px; font-size: 0.8rem; background: #e0f2fe; color: #0369a1; border-color: #bae6fd;" (click)="printOrder(order)" title="Print Tax Invoice / Bill">
+                    🧾 View / Print Bill
+                  </button>
                 </td>
               </tr>
             } @empty {
               @if (history.length > 0) {
                 @for (order of history; track order.id) {
                   <tr>
-                    <td>{{ order.orderNumber }}</td>
-                    <td>{{ money(order.totalAmount) }}</td>
-                    <td>{{ dateTime(order.createdAtUtc) }}</td>
-                    <td><span class="muted">Local copy</span></td>
+                    <td>
+                      <span class="code-pill">#{{ order.orderNumber }}</span>
+                    </td>
+                    <td>
+                      <strong class="cell-price">{{ money(order.totalAmount) }}</strong>
+                    </td>
+                    <td style="font-size: 0.84rem; color: #475569;">{{ dateTime(order.createdAtUtc) }}</td>
+                    <td style="text-align: right;">
+                      <span class="cell-chip">Saved in browser session</span>
+                    </td>
                   </tr>
                 }
               } @else {
                 <tr>
-                  <td colspan="4"><div class="empty-state">No orders yet. Place an order from the catalog.</div></td>
+                  <td colspan="4">
+                    <div class="empty-state">
+                      <div style="font-size: 2.2rem; margin-bottom: 8px;">🛍️</div>
+                      <strong>No orders yet</strong>
+                      <p>Browse our catalog of smartphones and genuine accessories to place your first order.</p>
+                      <a class="btn primary" routerLink="/catalog" style="margin-top: 12px; display: inline-flex;">
+                        Browse Smartphones
+                      </a>
+                    </div>
+                  </td>
                 </tr>
               }
             }
@@ -73,42 +101,54 @@ import { LocalOrderHistoryItem, readOrderHistory } from './cart.component';
     </div>
 
     <div class="grid two" style="margin-top: 24px;">
-      <section class="panel">
-        <div class="panel-header">
-          <strong>Invoice lookup</strong>
+      <section class="panel panel-accent" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);">
+        <div class="panel-header" style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+          <div>
+            <strong style="font-size: 1rem; color: #0f172a;">🔍 Instant Invoice Lookup</strong>
+            <p style="margin: 2px 0 0; font-size: 0.78rem; color: #64748b;">Verify invoice authenticity and GST compliance</p>
+          </div>
         </div>
-        <div class="panel-body grid">
+        <div class="panel-body grid" style="padding: 20px;">
           <label class="field">
-            <span>Order ID</span>
-            <input class="input" name="invoiceOrderId" [(ngModel)]="invoiceOrderId">
+            <span>Order ID / Reference <span class="required-star">*</span></span>
+            <input class="input" name="invoiceOrderId" [(ngModel)]="invoiceOrderId" placeholder="Paste your Order ID or UUID">
           </label>
-          <button class="btn" type="button" (click)="loadInvoice()">Load invoice</button>
+          <button class="btn primary" type="button" (click)="loadInvoice()" [disabled]="!invoiceOrderId">
+            🔍 Check Invoice
+          </button>
           @if (invoice) {
-            <div class="message success">
-              Invoice {{ invoice.invoiceNumber }} issued {{ dateTime(invoice.issuedAtUtc) }}.
+            <div class="message success" style="margin-top: 8px;">
+              ✓ Invoice <strong>#{{ invoice.invoiceNumber }}</strong> issued on {{ dateTime(invoice.issuedAtUtc) }}.
             </div>
           }
         </div>
       </section>
 
-      <section class="panel">
-        <div class="panel-header">
-          <strong>Request a return</strong>
+      <section class="panel panel-accent" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);">
+        <div class="panel-header" style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+          <div>
+            <strong style="font-size: 1rem; color: #0f172a;">↩️ Request Return / Exchange</strong>
+            <p style="margin: 2px 0 0; font-size: 0.78rem; color: #64748b;">Hassle-free return request for qualifying items</p>
+          </div>
         </div>
-        <div class="panel-body grid">
+        <div class="panel-body grid" style="padding: 20px;">
+          <div class="grid two">
+            <label class="field">
+              <span>Order ID <span class="required-star">*</span></span>
+              <input class="input" name="returnOrderId" [(ngModel)]="returnModel.orderId" placeholder="Order ID" required>
+            </label>
+            <label class="field">
+              <span>Refund Amount (₹)</span>
+              <input class="input" type="number" min="0" step="0.01" name="refundAmount" [(ngModel)]="returnModel.refundAmount" placeholder="0.00">
+            </label>
+          </div>
           <label class="field">
-            <span>Order ID</span>
-            <input class="input" name="returnOrderId" [(ngModel)]="returnModel.orderId" required>
+            <span>Return Reason <span class="required-star">*</span></span>
+            <textarea class="textarea" name="reason" [(ngModel)]="returnModel.reason" placeholder="Please describe why you are requesting a return or exchange..." required></textarea>
           </label>
-          <label class="field">
-            <span>Reason</span>
-            <textarea class="textarea" name="reason" [(ngModel)]="returnModel.reason" required></textarea>
-          </label>
-          <label class="field">
-            <span>Refund amount</span>
-            <input class="input" type="number" min="0" step="0.01" name="refundAmount" [(ngModel)]="returnModel.refundAmount">
-          </label>
-          <button class="btn primary" type="button" (click)="createReturn()">Submit return</button>
+          <button class="btn primary" type="button" (click)="createReturn()" [disabled]="!returnModel.orderId || !returnModel.reason">
+            Submit Return Request
+          </button>
         </div>
       </section>
     </div>

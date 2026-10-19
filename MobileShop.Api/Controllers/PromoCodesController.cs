@@ -15,6 +15,19 @@ public class PromoCodesController(IPricingService pricingService) : ControllerBa
     public async Task<IActionResult> GetPromoCodes([FromQuery] QueryParameters queryParameters, CancellationToken cancellationToken) =>
         Ok(await pricingService.GetPromoCodesAsync(queryParameters, cancellationToken));
 
+    [HttpGet("active")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetActivePromoCodes(CancellationToken cancellationToken) =>
+        Ok(await pricingService.GetActivePromoCodesAsync(cancellationToken));
+
+    [HttpGet("validate/{code}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ValidatePromoCode(string code, CancellationToken cancellationToken)
+    {
+        var promo = await pricingService.ValidatePromoCodeAsync(code, cancellationToken);
+        return promo is null ? NotFound(new { message = $"Promo code '{code}' is invalid or expired." }) : Ok(promo);
+    }
+
     [HttpPost]
     public async Task<IActionResult> CreatePromoCode([FromBody] UpsertPromoCodeRequest request, CancellationToken cancellationToken) =>
         Ok(await pricingService.CreatePromoCodeAsync(request, User.Identity?.Name ?? "api", cancellationToken));

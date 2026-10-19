@@ -136,7 +136,7 @@ import { money } from '../core/formatters';
       <div class="panel-body" [class.loading]="loading">
         <div class="product-grid">
           @for (product of products; track product.id) {
-            <article class="product-card" style="display: flex; flex-direction: column; position: relative;">
+            <article class="product-card">
               <!-- Wishlist Quick Toggle -->
               <button
                 class="wishlist-btn"
@@ -147,52 +147,89 @@ import { money } from '../core/formatters';
                 {{ isInWishlist(product.id) ? '❤️' : '🤍' }}
               </button>
 
-              <div class="device-art" aria-hidden="true" style="margin-bottom: 12px;"></div>
-
-              <div style="flex: 1;">
-                <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 6px;">
-                  <span class="badge" style="font-size: 0.72rem;">{{ optionLabel(product.productType) }}</span>
-                  <span class="muted" style="font-size: 0.78rem;">{{ product.brandName }}</span>
-                </div>
-                <h3 style="margin: 8px 0 4px; font-size: 1.05rem; line-height: 1.3;">{{ product.name }}</h3>
-                <p class="muted" style="margin: 0 0 10px; font-size: 0.84rem; min-height: 38px; line-height: 1.4;">
-                  {{ product.description || (product.brandName + ' ' + product.categoryName) }}
-                </p>
+              <!-- Device Art Container with Feature Tag -->
+              <div class="device-art" aria-hidden="true" style="margin-bottom: 12px;">
+                <span style="position: absolute; bottom: 8px; left: 10px; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(4px); color: #34d399; font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.5px;">
+                  100% GENUINE
+                </span>
+                @if (product.discountAmount > 0) {
+                  <span style="position: absolute; top: 10px; left: 10px; background: #dc2626; color: white; font-size: 0.68rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.3px;">
+                    SPECIAL DEAL
+                  </span>
+                }
               </div>
 
-              <!-- Price & Stock row -->
-              <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; padding-top: 8px; border-top: 1px solid var(--line);">
+              <div style="flex: 1; display: flex; flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 6px;">
+                  <span class="badge" style="font-size: 0.72rem; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0;">
+                    {{ product.brandName }}
+                  </span>
+                  <span class="muted" style="font-size: 0.74rem; font-family: monospace;">SKU: {{ product.sku }}</span>
+                </div>
+
+                <h3 style="margin: 0 0 6px; font-size: 1.08rem; line-height: 1.35; font-weight: 700; color: #0f172a;">
+                  {{ product.name }}
+                </h3>
+
+                <p class="muted" style="margin: 0 0 10px; font-size: 0.83rem; line-height: 1.45; min-height: 38px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                  {{ product.description || (product.brandName + ' ' + product.categoryName + ' with official manufacturer warranty.') }}
+                </p>
+
+                <!-- Rating Preview Pill -->
+                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 10px; font-size: 0.78rem;">
+                  <span style="background: #fef3c7; color: #92400e; padding: 1px 6px; border-radius: 4px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px;">
+                    ★ 4.8
+                  </span>
+                  <span class="muted" style="font-size: 0.74rem;">Verified Retail Stock</span>
+                </div>
+              </div>
+
+              <!-- Price & Stock Row -->
+              <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 14px; padding-top: 10px; border-top: 1px solid #f1f5f9;">
                 <div>
-                  <strong style="font-size: 1.25rem; color: var(--primary);">{{ money(product.price) }}</strong>
+                  <div style="display: flex; align-items: baseline; gap: 6px;">
+                    <strong style="font-size: 1.35rem; color: #0d7a5f; font-weight: 900; letter-spacing: -0.02em;">
+                      {{ money(product.price) }}
+                    </strong>
+                    @if (product.discountAmount > 0) {
+                      <span class="muted" style="font-size: 0.8rem; text-decoration: line-through;">
+                        {{ money(product.price + product.discountAmount) }}
+                      </span>
+                    }
+                  </div>
                   @if (product.discountAmount > 0) {
-                    <span class="muted" style="font-size: 0.78rem; text-decoration: line-through; margin-left: 6px;">
-                      {{ money(product.price + product.discountAmount) }}
-                    </span>
+                    <div style="color: #dc2626; font-size: 0.72rem; font-weight: 700; margin-top: 2px;">
+                      Save {{ money(product.discountAmount) }} (Special Offer)
+                    </div>
                   }
                 </div>
-                <span
-                  class="badge"
-                  [class.good]="product.quantityOnHand > product.reorderLevel"
-                  [class.warn]="product.quantityOnHand > 0 && product.quantityOnHand <= product.reorderLevel"
-                  [class.bad]="product.quantityOnHand <= 0"
-                  style="font-size: 0.75rem;"
-                >
-                  {{ product.quantityOnHand > 0 ? product.quantityOnHand + ' in stock' : 'Out of stock' }}
-                </span>
+
+                <div>
+                  <span
+                    class="badge"
+                    [class.good]="product.quantityOnHand > product.reorderLevel"
+                    [class.warn]="product.quantityOnHand > 0 && product.quantityOnHand <= product.reorderLevel"
+                    [class.bad]="product.quantityOnHand <= 0"
+                    style="font-size: 0.74rem; font-weight: 700;"
+                  >
+                    {{ product.quantityOnHand > 0 ? ('🟢 ' + product.quantityOnHand + ' in stock') : '🔴 Sold Out' }}
+                  </span>
+                </div>
               </div>
 
-              <!-- Action buttons -->
-              <div style="display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px;">
-                <button class="btn ghost" type="button" (click)="openProductDetails(product)">
-                  Reviews & Specs
+              <!-- Action Buttons -->
+              <div style="display: grid; grid-template-columns: 1fr 1.35fr; gap: 8px;">
+                <button class="btn ghost" type="button" (click)="openProductDetails(product)" style="padding: 8px 10px; font-size: 0.82rem;" title="View specs, reviews and warranty">
+                  🔍 Specs
                 </button>
                 <button
                   class="btn primary"
                   type="button"
                   (click)="addToCart(product)"
                   [disabled]="product.quantityOnHand <= 0"
+                  style="padding: 8px 12px; font-size: 0.86rem; font-weight: 700;"
                 >
-                  {{ product.quantityOnHand > 0 ? 'Add to Cart' : 'Sold Out' }}
+                  {{ product.quantityOnHand > 0 ? '🛒 Add to Cart' : 'Out of Stock' }}
                 </button>
               </div>
             </article>

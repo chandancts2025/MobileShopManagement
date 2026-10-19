@@ -31,3 +31,10 @@ public class NotificationSummaryDto
     public int TotalNotifications { get; set; }
     public Dictionary<NotificationType, int> NotificationsByType { get; set; } = new();
 }
+
+public class TestEmailRequest
+{
+    public string ToEmail { get; set; } = string.Empty;
+    public string? Subject { get; set; }
+    public string? Message { get; set; }
+}

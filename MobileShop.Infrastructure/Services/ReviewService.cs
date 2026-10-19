@@ -7,7 +7,7 @@ using MobileShop.Infrastructure.Persistence;
 
 namespace MobileShop.Infrastructure.Services;
 
-public class ReviewService(MobileShopDbContext dbContext) : IReviewService
+public class ReviewService(MobileShopDbContext dbContext, IEmailService emailService) : IReviewService
 {
     public async Task<PagedResult<ProductReviewDto>> GetProductReviewsAsync(Guid productId, QueryParameters queryParameters, CancellationToken cancellationToken)
     {
@@ -255,7 +255,11 @@ public class ReviewService(MobileShopDbContext dbContext) : IReviewService
 
     public async Task<bool> ApproveReviewAsync(Guid reviewId, string performedBy, CancellationToken cancellationToken)
     {
-        var review = await dbContext.ProductReviews.FindAsync(new object?[] { reviewId }, cancellationToken);
+        var review = await dbContext.ProductReviews
+            .Include(r => r.Product)
+            .Include(r => r.CustomerProfile)
+            .ThenInclude(c => c.User)
+            .FirstOrDefaultAsync(r => r.Id == reviewId, cancellationToken);
         if (review == null)
             return false;
 
@@ -263,6 +267,14 @@ public class ReviewService(MobileShopDbContext dbContext) : IReviewService
         review.UpdatedBy = performedBy;
         review.UpdatedAtUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
+        if (review.CustomerProfile?.User != null && !string.IsNullOrWhiteSpace(review.CustomerProfile.User.Email))
+        {
+            await emailService.SendReviewApprovalNotificationAsync(
+                review.CustomerProfile.User.Email,
+                review.CustomerProfile.User.FirstName,
+                review.Product?.Name ?? "Product",
+                cancellationToken);
+        }
         return true;
     }
 

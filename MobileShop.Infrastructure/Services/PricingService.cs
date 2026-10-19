@@ -134,6 +134,40 @@ public class PricingService(MobileShopDbContext dbContext, IAuditLogService audi
         return true;
     }
 
+    public async Task<PromoCodeDto?> ValidatePromoCodeAsync(string code, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(code)) return null;
+        var normalizedCode = code.Trim().ToUpperInvariant();
+        var now = DateTime.UtcNow;
+        var entity = await dbContext.PromoCodes.AsNoTracking().FirstOrDefaultAsync(x =>
+            (x.Code.ToUpper() == normalizedCode) &&
+            x.IsActive &&
+            x.ValidFromUtc <= now &&
+            x.ValidToUtc >= now,
+            cancellationToken);
+
+        return entity is null ? null : Map(entity);
+    }
+
+    public async Task<IReadOnlyCollection<PromoCodeDto>> GetActivePromoCodesAsync(CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        return await dbContext.PromoCodes.AsNoTracking()
+            .Where(x => x.IsActive && x.ValidFromUtc <= now && x.ValidToUtc >= now)
+            .OrderBy(x => x.Code)
+            .Select(x => new PromoCodeDto
+            {
+                Id = x.Id,
+                Code = x.Code,
+                DiscountAmount = x.DiscountAmount,
+                DiscountPercentage = x.DiscountPercentage,
+                ValidFromUtc = x.ValidFromUtc,
+                ValidToUtc = x.ValidToUtc,
+                IsActive = x.IsActive
+            })
+            .ToListAsync(cancellationToken);
+    }
+
     private static TaxRuleDto Map(TaxRule entity) => new()
     {
         Id = entity.Id,

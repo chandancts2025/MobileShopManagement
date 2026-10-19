@@ -26,6 +26,19 @@ public static class ServiceCollectionExtensions
             ExpiryMinutes = int.TryParse(jwtSection["ExpiryMinutes"], out var expiryMinutes) ? expiryMinutes : 60
         }));
 
+        var smtpSection = configuration.GetSection(SmtpSettings.SectionName);
+        services.AddSingleton(Options.Create(new SmtpSettings
+        {
+            Host = smtpSection["Host"] ?? "smtp.gmail.com",
+            Port = int.TryParse(smtpSection["Port"], out var smtpPort) ? smtpPort : 587,
+            EnableSsl = !bool.TryParse(smtpSection["EnableSsl"], out var smtpSsl) || smtpSsl,
+            UserName = smtpSection["UserName"] ?? string.Empty,
+            Password = smtpSection["Password"] ?? string.Empty,
+            FromEmail = smtpSection["FromEmail"] ?? string.Empty,
+            FromName = smtpSection["FromName"] ?? "Mobile Shop",
+            DevMode = bool.TryParse(smtpSection["DevMode"], out var smtpDev) && smtpDev
+        }));
+
         services.AddDbContext<MobileShopDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 

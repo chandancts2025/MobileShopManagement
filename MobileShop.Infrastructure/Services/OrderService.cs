@@ -8,7 +8,7 @@ using MobileShop.Infrastructure.Persistence;
 
 namespace MobileShop.Infrastructure.Services;
 
-public class OrderService(MobileShopDbContext dbContext, IAuditLogService auditLogService) : IOrderService
+public class OrderService(MobileShopDbContext dbContext, IAuditLogService auditLogService, IEmailService emailService) : IOrderService
 {
     public async Task<PagedResult<OrderDto>> GetOrdersAsync(QueryParameters queryParameters, Guid? customerProfileId = null, CancellationToken cancellationToken = default)
     {
@@ -70,8 +70,7 @@ public class OrderService(MobileShopDbContext dbContext, IAuditLogService auditL
         }
 
         decimal subtotal = 0m;
-        decimal taxAmount = 0m;
-        decimal discountAmount = 0m;
+        decimal itemDiscount = 0m;
         var orderItems = new List<OrderItem>();
         var orderNumber = $"ORD-{DateTime.UtcNow:yyyyMMddHHmmssfff}";
 
@@ -84,12 +83,14 @@ public class OrderService(MobileShopDbContext dbContext, IAuditLogService auditL
             }
 
             var lineSubtotal = product.Price * item.Quantity;
-            var lineTax = lineSubtotal * (product.TaxPercentage / 100m);
             var lineDiscount = product.DiscountAmount * item.Quantity;
+            var lineTaxable = Math.Max(0m, lineSubtotal - lineDiscount);
+            var lineCgst = Math.Round(lineTaxable * 0.09m, 2);
+            var lineSgst = Math.Round(lineTaxable * 0.09m, 2);
+            var lineTax = lineCgst + lineSgst;
 
             subtotal += lineSubtotal;
-            taxAmount += lineTax;
-            discountAmount += lineDiscount;
+            itemDiscount += lineDiscount;
 
             product.InventoryStock.QuantityOnHand -= item.Quantity;
             product.InventoryStock.UpdatedAtUtc = DateTime.UtcNow;
@@ -115,11 +116,13 @@ public class OrderService(MobileShopDbContext dbContext, IAuditLogService auditL
             });
         }
 
+        decimal promoDiscount = 0m;
         if (!string.IsNullOrWhiteSpace(request.PromoCode))
         {
             var now = DateTime.UtcNow;
+            var normalizedCode = request.PromoCode.Trim().ToUpperInvariant();
             var promo = await dbContext.PromoCodes.FirstOrDefaultAsync(x =>
-                x.Code == request.PromoCode &&
+                x.Code.ToUpper() == normalizedCode &&
                 x.IsActive &&
                 x.ValidFromUtc <= now &&
                 x.ValidToUtc >= now,
@@ -130,15 +133,22 @@ public class OrderService(MobileShopDbContext dbContext, IAuditLogService auditL
                 throw new InvalidOperationException("Promo code is invalid or expired.");
             }
 
-            var discountBase = Math.Max(0m, subtotal - discountAmount);
-            var promoDiscount = promo.DiscountAmount;
+            var discountBase = Math.Max(0m, subtotal - itemDiscount);
+            promoDiscount = promo.DiscountAmount;
             if (promo.DiscountPercentage.HasValue)
             {
                 promoDiscount += discountBase * (promo.DiscountPercentage.Value / 100m);
             }
 
-            discountAmount += Math.Min(promoDiscount, discountBase);
+            promoDiscount = Math.Min(promoDiscount, discountBase);
         }
+
+        var totalDiscount = itemDiscount + promoDiscount;
+        var netTaxable = Math.Max(0m, subtotal - totalDiscount);
+        var cgst = Math.Round(netTaxable * 0.09m, 2);
+        var sgst = Math.Round(netTaxable * 0.09m, 2);
+        var taxAmount = cgst + sgst;
+        var totalAmount = netTaxable + taxAmount;
 
         var order = new Order
         {
@@ -146,8 +156,8 @@ public class OrderService(MobileShopDbContext dbContext, IAuditLogService auditL
             CustomerProfileId = request.CustomerProfileId!.Value,
             Subtotal = subtotal,
             TaxAmount = taxAmount,
-            DiscountAmount = discountAmount,
-            TotalAmount = subtotal + taxAmount - discountAmount,
+            DiscountAmount = totalDiscount,
+            TotalAmount = totalAmount,
             Status = OrderStatus.Pending,
             Items = orderItems,
             CreatedBy = performedBy
@@ -191,6 +201,20 @@ public class OrderService(MobileShopDbContext dbContext, IAuditLogService auditL
         dbContext.Bills.Add(bill);
         await dbContext.SaveChangesAsync(cancellationToken);
         await auditLogService.LogAsync(nameof(Bill), "Create", performedBy, bill.BillNumber, cancellationToken);
+
+        var customer = await dbContext.CustomerProfiles
+            .Include(c => c.User)
+            .FirstOrDefaultAsync(c => c.Id == order.CustomerProfileId, cancellationToken);
+
+        if (customer?.User != null && !string.IsNullOrWhiteSpace(customer.User.Email))
+        {
+            await emailService.SendOrderConfirmationAsync(
+                customer.User.Email,
+                customer.FullName,
+                order.OrderNumber,
+                order.TotalAmount,
+                cancellationToken);
+        }
 
         return new OrderDto
         {
@@ -247,6 +271,21 @@ public class OrderService(MobileShopDbContext dbContext, IAuditLogService auditL
         order.UpdatedBy = performedBy;
         await dbContext.SaveChangesAsync(cancellationToken);
         await auditLogService.LogAsync(nameof(Order), status.ToString(), performedBy, order.OrderNumber, cancellationToken);
+
+        var orderCustomer = await dbContext.CustomerProfiles
+            .Include(c => c.User)
+            .FirstOrDefaultAsync(c => c.Id == order.CustomerProfileId, cancellationToken);
+
+        if (orderCustomer?.User != null && !string.IsNullOrWhiteSpace(orderCustomer.User.Email))
+        {
+            await emailService.SendOrderStatusUpdateAsync(
+                orderCustomer.User.Email,
+                orderCustomer.FullName,
+                order.OrderNumber,
+                status.ToString(),
+                cancellationToken);
+        }
+
         return true;
     }
 }

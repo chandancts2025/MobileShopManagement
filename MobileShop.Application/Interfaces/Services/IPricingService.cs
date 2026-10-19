@@ -13,4 +13,6 @@ public interface IPricingService
     Task<PromoCodeDto> CreatePromoCodeAsync(UpsertPromoCodeRequest request, string performedBy, CancellationToken cancellationToken = default);
     Task<PromoCodeDto?> UpdatePromoCodeAsync(Guid id, UpsertPromoCodeRequest request, string performedBy, CancellationToken cancellationToken = default);
     Task<bool> DeletePromoCodeAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<PromoCodeDto?> ValidatePromoCodeAsync(string code, CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<PromoCodeDto>> GetActivePromoCodesAsync(CancellationToken cancellationToken = default);
 }

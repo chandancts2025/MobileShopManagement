@@ -8,7 +8,7 @@ using MobileShop.Infrastructure.Persistence;
 
 namespace MobileShop.Infrastructure.Services;
 
-public class RepairService(MobileShopDbContext dbContext, IAuditLogService auditLogService) : IRepairService
+public class RepairService(MobileShopDbContext dbContext, IAuditLogService auditLogService, IEmailService emailService) : IRepairService
 {
     public async Task<PagedResult<RepairTicketDto>> GetRepairTicketsAsync(QueryParameters queryParameters, CancellationToken cancellationToken = default)
     {
@@ -96,6 +96,35 @@ public class RepairService(MobileShopDbContext dbContext, IAuditLogService audit
         dbContext.RepairTickets.Add(ticket);
         await dbContext.SaveChangesAsync(cancellationToken);
         await auditLogService.LogAsync(nameof(RepairTicket), "Create", performedBy, ticket.TicketNumber, cancellationToken);
+
+        string? customerEmail = null;
+        if (ticket.CustomerProfileId.HasValue)
+        {
+            customerEmail = await dbContext.CustomerProfiles
+                .Where(c => c.Id == ticket.CustomerProfileId.Value)
+                .Select(c => c.User.Email)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+        if (string.IsNullOrWhiteSpace(customerEmail) && !string.IsNullOrWhiteSpace(ticket.PhoneNumber))
+        {
+            customerEmail = await dbContext.Users
+                .Where(u => u.PhoneNumber == ticket.PhoneNumber)
+                .Select(u => u.Email)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
+        if (!string.IsNullOrWhiteSpace(customerEmail))
+        {
+            await emailService.SendRepairTicketNotificationAsync(
+                customerEmail,
+                ticket.CustomerName,
+                ticket.TicketNumber,
+                $"{ticket.DeviceBrand} {ticket.DeviceModel}".Trim(),
+                ticket.Status.ToString(),
+                ticket.EstimatedCost,
+                cancellationToken);
+        }
+
         return Map(ticket);
     }
 
@@ -143,6 +172,35 @@ public class RepairService(MobileShopDbContext dbContext, IAuditLogService audit
 
         await dbContext.SaveChangesAsync(cancellationToken);
         await auditLogService.LogAsync(nameof(RepairTicket), request.Status.ToString(), performedBy, ticket.TicketNumber, cancellationToken);
+
+        string? customerEmail = null;
+        if (ticket.CustomerProfileId.HasValue)
+        {
+            customerEmail = await dbContext.CustomerProfiles
+                .Where(c => c.Id == ticket.CustomerProfileId.Value)
+                .Select(c => c.User.Email)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+        if (string.IsNullOrWhiteSpace(customerEmail) && !string.IsNullOrWhiteSpace(ticket.PhoneNumber))
+        {
+            customerEmail = await dbContext.Users
+                .Where(u => u.PhoneNumber == ticket.PhoneNumber)
+                .Select(u => u.Email)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
+        if (!string.IsNullOrWhiteSpace(customerEmail))
+        {
+            await emailService.SendRepairTicketNotificationAsync(
+                customerEmail,
+                ticket.CustomerName,
+                ticket.TicketNumber,
+                $"{ticket.DeviceBrand} {ticket.DeviceModel}".Trim(),
+                ticket.Status.ToString(),
+                ticket.FinalAmount,
+                cancellationToken);
+        }
+
         return Map(ticket);
     }
 

@@ -29,4 +29,16 @@ public class SettingsController(ISettingsService settingsService) : ControllerBa
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteSetting(Guid id, CancellationToken cancellationToken) =>
         await settingsService.DeleteSettingAsync(id, cancellationToken) ? NoContent() : NotFound();
+
+    [AllowAnonymous]
+    [HttpPost("seed-dummy-data")]
+    public async Task<IActionResult> SeedDummyData(
+        [FromServices] MobileShop.Infrastructure.Persistence.MobileShopDbContext dbContext,
+        [FromServices] MobileShop.Application.Interfaces.Security.IPasswordHasher passwordHasher,
+        CancellationToken cancellationToken)
+    {
+        var summary = await MobileShop.Infrastructure.Seed.Seeder.SeedStandardDummyDataAsync(dbContext, passwordHasher, cancellationToken);
+        return Ok(summary);
+    }
 }
+

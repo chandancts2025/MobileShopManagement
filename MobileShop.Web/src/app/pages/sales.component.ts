@@ -22,10 +22,13 @@ import { dateTime, enumLabel, money } from '../core/formatters';
   template: `
     <div class="page-header">
       <div>
-        <h2>Sales and orders</h2>
-        <p>Staff order history, payment capture, invoice lookup, and return processing.</p>
+        <h2>
+          Sales & Order Operations
+          <span class="badge" style="margin-left: 8px; font-size: 0.78rem;">{{ orders.length }} orders</span>
+        </h2>
+        <p>Order fulfillment, payment recording, thermal receipt reprints, and return settlements.</p>
       </div>
-      <a class="btn primary" routerLink="/cart">Create sale from cart</a>
+      <a class="btn primary" routerLink="/cart">🛒 + New Sale from Cart</a>
     </div>
 
     @if (error) {
@@ -37,50 +40,79 @@ import { dateTime, enumLabel, money } from '../core/formatters';
 
     <section class="panel" [class.loading]="loading">
       <div class="panel-header toolbar">
-        <div class="toolbar-left">
-          <input class="input" style="width: min(360px, 100%);" name="orderSearch" [(ngModel)]="orderQuery.search" (keyup.enter)="loadOrders()" placeholder="Search orders or customers">
+        <div class="toolbar-left" style="flex: 1;">
+          <input class="input" style="max-width: 380px;" name="orderSearch" [(ngModel)]="orderQuery.search" (keyup.enter)="loadOrders()" placeholder="🔍 Search order # or customer name...">
           <button class="btn" type="button" (click)="loadOrders()">Search</button>
+          @if (orderQuery.search) {
+            <button class="btn ghost" type="button" (click)="orderQuery.search = ''; loadOrders()">Clear</button>
+          }
         </div>
+        <button class="btn ghost" type="button" (click)="loadOrders()">🔄 Refresh</button>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Order</th>
+              <th>Order #</th>
               <th>Customer</th>
-              <th>Total</th>
+              <th>Total Amount</th>
               <th>Paid</th>
-              <th>Balance</th>
+              <th>Balance Due</th>
               <th>Status</th>
-              <th>Created</th>
-              <th>Update</th>
+              <th>Date Created</th>
+              <th style="min-width: 170px;">Status & Print</th>
             </tr>
           </thead>
           <tbody>
             @for (order of orders; track order.id) {
               <tr>
-                <td>{{ order.orderNumber }}</td>
-                <td>{{ order.customerName || 'Counter sale' }}</td>
-                <td>{{ money(order.totalAmount) }}</td>
-                <td>{{ money(order.paidAmount) }}</td>
-                <td>{{ money(order.balanceAmount) }}</td>
-                <td><span class="badge">{{ enumLabel(orderStatusOptions, order.status) }}</span></td>
-                <td>{{ dateTime(order.createdAtUtc) }}</td>
                 <td>
-                  <select class="select" style="min-width: 150px;" [name]="'status' + order.id" [(ngModel)]="orderStatusDrafts[order.id]">
-                    @for (status of orderStatusOptions; track status.value) {
-                      <option [ngValue]="status.value">{{ status.label }}</option>
-                    }
-                  </select>
-                  <div style="display:flex; gap:8px; margin-top:8px;">
-                    <button class="btn" type="button" (click)="printOrder(order)">Print</button>
-                    <button class="btn ghost" type="button" (click)="updateOrderStatus(order)">Save</button>
+                  <span class="code-pill">#{{ order.orderNumber }}</span>
+                </td>
+                <td>
+                  <strong>{{ order.customerName || 'Counter sale' }}</strong>
+                </td>
+                <td>
+                  <strong class="cell-price">{{ money(order.totalAmount) }}</strong>
+                </td>
+                <td style="color: #16a34a; font-weight: 600;">{{ money(order.paidAmount) }}</td>
+                <td>
+                  @if (order.balanceAmount > 0) {
+                    <span style="color: #dc2626; font-weight: 700;">{{ money(order.balanceAmount) }}</span>
+                  } @else {
+                    <span style="color: #16a34a;">₹0.00</span>
+                  }
+                </td>
+                <td>
+                  <span class="badge" [class]="orderStatusClass(order.status)">
+                    {{ enumLabel(orderStatusOptions, order.status) }}
+                  </span>
+                </td>
+                <td style="font-size: 0.84rem; color: #475569;">{{ dateTime(order.createdAtUtc) }}</td>
+                <td>
+                  <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                    <select class="select" style="min-width: 130px; min-height: 32px; padding: 4px 8px; font-size: 0.8rem;" [name]="'status' + order.id" [(ngModel)]="orderStatusDrafts[order.id]">
+                      @for (status of orderStatusOptions; track status.value) {
+                        <option [ngValue]="status.value">{{ status.label }}</option>
+                      }
+                    </select>
+                    <button class="btn ghost" type="button" style="padding: 4px 8px; font-size: 0.78rem;" (click)="updateOrderStatus(order)" title="Save status update">Save</button>
+                  </div>
+                  <div style="display:flex; gap:6px; margin-top:6px; flex-wrap: wrap;">
+                    <button class="btn" type="button" style="padding: 4px 8px; font-size: 0.78rem;" (click)="printOrder(order, 'a4')" title="Print Standard A4 Tax Invoice">📄 A4</button>
+                    <button class="btn ghost" type="button" style="padding: 4px 8px; font-size: 0.78rem; background: #e0f2fe; color: #0369a1; border-color: #bae6fd;" (click)="printOrder(order, '80mm')" title="Print 80mm POS Thermal Slip">🧾 80mm</button>
                   </div>
                 </td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="8"><div class="empty-state">No orders found.</div></td>
+                <td colspan="8">
+                  <div class="empty-state">
+                    <div style="font-size: 2.2rem; margin-bottom: 8px;">🛒</div>
+                    <strong>No orders found</strong>
+                    <p>Start a new counter sale from the cart or catalog.</p>
+                  </div>
+                </td>
               </tr>
             }
           </tbody>
@@ -89,28 +121,31 @@ import { dateTime, enumLabel, money } from '../core/formatters';
     </section>
 
     <section class="grid two" style="margin-top: 16px;">
-      <div class="panel">
-        <div class="panel-header">
-          <strong>Record payment</strong>
-          <button class="btn ghost" type="button" (click)="loadPayments()">Refresh payments</button>
+      <div class="panel panel-accent" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);">
+        <div class="panel-header" style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+          <div>
+            <strong style="font-size: 1rem; color: #0f172a;">💳 Record Payment</strong>
+            <p style="margin: 2px 0 0; font-size: 0.78rem; color: #64748b;">Capture cash, UPI, or card settlements against active orders</p>
+          </div>
+          <button class="btn ghost" type="button" (click)="loadPayments()">Refresh</button>
         </div>
-        <div class="panel-body grid">
+        <div class="panel-body grid" style="padding: 20px;">
           <label class="field">
-            <span>Order</span>
+            <span>Select Target Order <span class="required-star">*</span></span>
             <select class="select" name="paymentOrderId" [(ngModel)]="paymentModel.orderId" required>
-              <option [ngValue]="''">Select order</option>
+              <option [ngValue]="''">-- Select order --</option>
               @for (order of orders; track order.id) {
-                <option [ngValue]="order.id">{{ order.orderNumber }} — {{ order.customerName || 'Counter sale' }}</option>
+                <option [ngValue]="order.id">{{ order.orderNumber }} — {{ order.customerName || 'Counter sale' }} (Total: {{ money(order.totalAmount) }})</option>
               }
             </select>
           </label>
           <div class="grid two">
             <label class="field">
-              <span>Amount</span>
-              <input class="input" type="number" min="0.01" step="0.01" name="paymentAmount" [(ngModel)]="paymentModel.amount" required>
+              <span>Amount (₹) <span class="required-star">*</span></span>
+              <input class="input" type="number" min="0.01" step="0.01" name="paymentAmount" [(ngModel)]="paymentModel.amount" placeholder="0.00" required>
             </label>
             <label class="field">
-              <span>Status</span>
+              <span>Payment Status</span>
               <select class="select" name="paymentStatus" [(ngModel)]="paymentModel.status">
                 @for (status of paymentStatusOptions; track status.value) {
                   <option [ngValue]="status.value">{{ status.label }}</option>
@@ -120,129 +155,51 @@ import { dateTime, enumLabel, money } from '../core/formatters';
           </div>
           <div class="grid two">
             <label class="field">
-              <span>Payment method</span>
+              <span>Payment Method <span class="required-star">*</span></span>
               <select class="select" name="paymentMethod" [(ngModel)]="paymentModel.paymentMethod">
                 <option value="Cash">Cash</option>
-                <option value="Card">Card</option>
-                <option value="UPI">UPI</option>
-                <option value="Other">Other</option>
+                <option value="Card">Credit / Debit Card</option>
+                <option value="UPI">UPI / QR Code</option>
+                <option value="Other">Bank Transfer / Other</option>
               </select>
             </label>
             <label class="field">
-              <span>Reference</span>
-              <input class="input" name="transactionReference" [(ngModel)]="paymentModel.transactionReference">
+              <span>Reference / UTR #</span>
+              <input class="input" name="transactionReference" [(ngModel)]="paymentModel.transactionReference" placeholder="e.g. UPI-1234567890">
             </label>
           </div>
-          <button class="btn primary" type="button" (click)="createPayment()">Save payment</button>
+          <button class="btn primary" type="button" (click)="createPayment()" [disabled]="!paymentModel.orderId || paymentModel.amount <= 0" style="margin-top: 6px;">
+            ✓ Save Payment Record
+          </button>
         </div>
       </div>
 
-      <div class="panel">
-        <div class="panel-header">
-          <strong>Invoice lookup</strong>
-        </div>
-        <div class="panel-body grid">
-          <label class="field">
-            <span>Order ID</span>
-            <input class="input" name="invoiceOrderId" [(ngModel)]="invoiceOrderId">
-          </label>
-          <button class="btn" type="button" (click)="loadInvoice()">Load invoice</button>
-          @if (invoice) {
-            <div class="message success">
-              Invoice {{ invoice.invoiceNumber }} for order {{ invoice.orderId }} issued {{ dateTime(invoice.issuedAtUtc) }}.
-            </div>
-          }
-        </div>
-      </div>
-    </section>
-
-    <section class="grid two" style="margin-top: 16px;">
-      <div class="panel">
-        <div class="panel-header">
-          <strong>Recent payments</strong>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Order</th>
-                <th>Amount</th>
-                <th>Method</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (payment of payments; track payment.id) {
-                <tr>
-                  <td>{{ payment.orderId }}</td>
-                  <td>{{ money(payment.amount) }}</td>
-                  <td>{{ payment.paymentMethod }}</td>
-                  <td>{{ enumLabel(paymentStatusOptions, payment.status) }}</td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="4"><div class="empty-state">No payments found.</div></td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-header">
-          <strong>Returns</strong>
+      <div class="panel panel-accent" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);">
+        <div class="panel-header" style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+          <div>
+            <strong style="font-size: 1rem; color: #0f172a;">↩️ Customer Returns</strong>
+            <p style="margin: 2px 0 0; font-size: 0.78rem; color: #64748b;">Process item returns and authorize refunds</p>
+          </div>
           <button class="btn ghost" type="button" (click)="loadReturns()">Refresh</button>
         </div>
-        <div class="panel-body grid">
+        <div class="panel-body grid" style="padding: 20px;">
           <div class="grid two">
             <label class="field">
-              <span>Order ID</span>
-              <input class="input" name="returnOrderId" [(ngModel)]="returnModel.orderId">
+              <span>Order ID / Number <span class="required-star">*</span></span>
+              <input class="input" name="returnOrderId" [(ngModel)]="returnModel.orderId" placeholder="Order ID or GUID">
             </label>
             <label class="field">
-              <span>Refund amount</span>
-              <input class="input" type="number" min="0" step="0.01" name="refundAmount" [(ngModel)]="returnModel.refundAmount">
+              <span>Refund Amount (₹) <span class="required-star">*</span></span>
+              <input class="input" type="number" min="0" step="0.01" name="refundAmount" [(ngModel)]="returnModel.refundAmount" placeholder="0.00">
             </label>
           </div>
           <label class="field">
-            <span>Reason</span>
-            <textarea class="textarea" name="returnReason" [(ngModel)]="returnModel.reason"></textarea>
+            <span>Return Reason & Inspection Notes <span class="required-star">*</span></span>
+            <textarea class="textarea" name="returnReason" [(ngModel)]="returnModel.reason" placeholder="e.g. Unopened box / sealed handset returned within policy window"></textarea>
           </label>
-          <button class="btn primary" type="button" (click)="createReturn()">Create return</button>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Order</th>
-                <th>Refund</th>
-                <th>Status</th>
-                <th>Update</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (request of returns; track request.id) {
-                <tr>
-                  <td>{{ request.orderId }}</td>
-                  <td>{{ money(request.refundAmount) }}</td>
-                  <td>{{ enumLabel(returnStatusOptions, request.status) }}</td>
-                  <td>
-                    <select class="select" [name]="'returnStatus' + request.id" [(ngModel)]="returnStatusDrafts[request.id]">
-                      @for (status of returnStatusOptions; track status.value) {
-                        <option [ngValue]="status.value">{{ status.label }}</option>
-                      }
-                    </select>
-                    <button class="btn ghost" type="button" style="margin-top: 8px;" (click)="updateReturnStatus(request)">Save</button>
-                  </td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="4"><div class="empty-state">No returns found.</div></td>
-                </tr>
-              }
-            </tbody>
-          </table>
+          <button class="btn primary" type="button" (click)="createReturn()" [disabled]="!returnModel.orderId" style="margin-top: 6px;">
+            Submit Return Request
+          </button>
         </div>
       </div>
     </section>
@@ -278,6 +235,16 @@ export class SalesComponent implements OnInit {
   readonly orderStatusOptions = orderStatusOptions;
   readonly paymentStatusOptions = paymentStatusOptions;
   readonly returnStatusOptions = returnStatusOptions;
+
+  orderStatusClass(status: number): string {
+    switch (status) {
+      case 3: return 'good';
+      case 1:
+      case 2: return 'warn';
+      case 4: return 'bad';
+      default: return '';
+    }
+  }
 
   constructor(private readonly api: ApiService) {}
 
@@ -331,12 +298,12 @@ export class SalesComponent implements OnInit {
     });
   }
 
-  printOrder(order: OrderDto): void {
+  printOrder(order: OrderDto, format: 'a4' | '80mm' = 'a4'): void {
     this.error = '';
     const printWindow = openPrintWindow();
 
     this.api.post<BillDto>(`/api/billing/orders/${order.id}/ensure`, {}).subscribe({
-      next: (bill) => openBillPrint(bill, printWindow),
+      next: (bill) => openBillPrint(bill, printWindow, format),
       error: (err) => {
         closePrintWindow(printWindow);
         this.error = apiErrorMessage(err);
@@ -411,8 +378,8 @@ function openPrintWindow(): Window | null {
   return printWindow;
 }
 
-function openBillPrint(bill: BillDto, printWindow: Window | null): void {
-  const url = `/billing/${bill.id}/print`;
+function openBillPrint(bill: BillDto, printWindow: Window | null, format: 'a4' | '80mm' = 'a4'): void {
+  const url = `/billing/${bill.id}/print?format=${format}`;
   if (printWindow && !printWindow.closed) {
     printWindow.location.href = url;
     return;

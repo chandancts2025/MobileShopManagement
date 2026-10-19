@@ -11,7 +11,8 @@ namespace MobileShop.Infrastructure.Services;
 public class AuthService(
     MobileShopDbContext dbContext,
     IPasswordHasher passwordHasher,
-    IJwtTokenGenerator jwtTokenGenerator) : IAuthService
+    IJwtTokenGenerator jwtTokenGenerator,
+    IEmailService emailService) : IAuthService
 {
     public async Task<AuthResponse> RegisterCustomerAsync(RegisterCustomerRequest request, CancellationToken cancellationToken = default)
     {
@@ -71,6 +72,7 @@ public class AuthService(
         dbContext.CustomerProfiles.Add(profile);
         dbContext.RefreshTokens.Add(refreshToken);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await emailService.SendWelcomeEmailAsync(user.Email, $"{user.FirstName} {user.LastName}".Trim(), cancellationToken);
 
         return BuildAuthResponse(user, refreshToken.Token);
     }

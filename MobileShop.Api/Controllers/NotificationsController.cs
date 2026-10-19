@@ -9,7 +9,7 @@ namespace MobileShop.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class NotificationsController(INotificationService notificationService) : ControllerBase
+public class NotificationsController(INotificationService notificationService, IEmailService emailService) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetNotifications([FromQuery] QueryParameters queryParameters, CancellationToken cancellationToken)
@@ -55,6 +55,19 @@ public class NotificationsController(INotificationService notificationService) :
     public async Task<IActionResult> GetNotificationSummary(CancellationToken cancellationToken)
     {
         return Ok(await notificationService.GetNotificationSummaryAsync(GetCurrentUserId(), cancellationToken));
+    }
+
+    [HttpPost("test-email")]
+    [Authorize(Roles = "SuperAdmin,Admin")]
+    public async Task<IActionResult> SendTestEmail([FromBody] TestEmailRequest request, CancellationToken cancellationToken)
+    {
+        await emailService.SendEmailAsync(
+            request.ToEmail,
+            request.Subject ?? "Test Email from Mobile Shop",
+            request.Message ?? "<p>This is a test verification email from Mobile Shop Management System confirming your Gmail SMTP configuration is operating properly.</p>",
+            cancellationToken);
+
+        return Ok(new { message = $"Test email dispatched to {request.ToEmail}" });
     }
 
     private Guid GetCurrentUserId()

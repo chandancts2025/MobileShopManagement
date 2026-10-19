@@ -21,6 +21,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/billing-print.component').then((m) => m.BillingPrintComponent)
   },
   {
+    path: 'repairs/:id/print',
+    canMatch: [authGuard, roleGuard([...staffRoles, 'Customer'])],
+    loadComponent: () => import('./pages/repair-print.component').then((m) => m.RepairPrintComponent)
+  },
+  {
     path: '',
     component: ShellComponent,
     children: [

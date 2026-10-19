@@ -8,7 +8,7 @@ using MobileShop.Infrastructure.Persistence;
 
 namespace MobileShop.Infrastructure.Services;
 
-public class NotificationService(MobileShopDbContext dbContext) : INotificationService
+public class NotificationService(MobileShopDbContext dbContext, IEmailService emailService) : INotificationService
 {
     public async Task<PagedResult<NotificationDto>> GetUserNotificationsAsync(Guid userId, QueryParameters queryParameters, CancellationToken cancellationToken)
     {
@@ -139,6 +139,11 @@ public class NotificationService(MobileShopDbContext dbContext) : INotificationS
                 Message = $"Product '{productName}' is running low. Current stock: {currentStock} units.",
                 ActionUrl = $"/inventory?product={productId}"
             }, cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(admin.Email))
+            {
+                await emailService.SendLowStockAlertAsync(admin.Email, productName, currentStock, 10, cancellationToken);
+            }
         }
     }
 
