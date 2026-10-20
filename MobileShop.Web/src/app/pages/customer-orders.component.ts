@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { ApiService, apiErrorMessage } from '../core/api.service';
 import { OrderDto, InvoiceDto, ReturnRequestDto, BillDto } from '../core/api.models';
@@ -76,7 +76,9 @@ import { LocalOrderHistoryItem, readOrderHistory } from './cart.component';
                     </td>
                     <td style="font-size: 0.84rem; color: #475569;">{{ dateTime(order.createdAtUtc) }}</td>
                     <td style="text-align: right;">
-                      <span class="cell-chip">Saved in browser session</span>
+                      <button class="btn ghost" type="button" style="padding: 4px 10px; font-size: 0.8rem; background: #e0f2fe; color: #0369a1; border-color: #bae6fd;" (click)="printOrder(order)" title="Print Tax Invoice / Bill">
+                        🧾 View / Print Bill
+                      </button>
                     </td>
                   </tr>
                 }
@@ -169,7 +171,10 @@ export class CustomerOrdersComponent implements OnInit {
   readonly money = money;
   readonly dateTime = dateTime;
 
-  constructor(private readonly api: ApiService) {}
+  constructor(
+    private readonly api: ApiService,
+    private readonly router: Router
+  ) {}
 
   ngOnInit(): void {
     this.loadOrders();
@@ -202,18 +207,17 @@ export class CustomerOrdersComponent implements OnInit {
     });
   }
 
-  printOrder(order: OrderDto): void {
+  printOrder(order: OrderDto | LocalOrderHistoryItem): void {
     this.error = '';
     this.success = '';
-    const printWindow = openPrintWindow();
 
     this.api.post<BillDto>(`/api/billing/orders/${order.id}/ensure`, {}).subscribe({
       next: (bill) => {
-        openBillPrint(bill, printWindow);
-        this.success = `Opening bill ${bill.billNumber} for print.`;
+        this.router.navigate(['/billing', bill.id, 'print'], {
+          queryParams: { format: '80mm' }
+        });
       },
       error: (error) => {
-        closePrintWindow(printWindow);
         this.error = apiErrorMessage(error);
       }
     });
@@ -232,28 +236,3 @@ export class CustomerOrdersComponent implements OnInit {
   }
 }
 
-function openPrintWindow(): Window | null {
-  const printWindow = window.open('', '_blank');
-  if (printWindow) {
-    printWindow.document.write('<!doctype html><title>Preparing bill</title><p>Preparing bill...</p>');
-    printWindow.document.close();
-  }
-
-  return printWindow;
-}
-
-function openBillPrint(bill: BillDto, printWindow: Window | null): void {
-  const url = `/billing/${bill.id}/print`;
-  if (printWindow && !printWindow.closed) {
-    printWindow.location.href = url;
-    return;
-  }
-
-  window.open(url, '_blank');
-}
-
-function closePrintWindow(printWindow: Window | null): void {
-  if (printWindow && !printWindow.closed) {
-    printWindow.close();
-  }
-}

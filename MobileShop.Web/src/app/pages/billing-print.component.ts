@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { ApiService, apiErrorMessage } from '../core/api.service';
+import { AuthService } from '../core/auth.service';
 import { BillDto } from '../core/api.models';
 
 @Component({
@@ -16,7 +17,7 @@ import { BillDto } from '../core/api.models';
       <header class="no-print screen-toolbar">
         <div class="toolbar-container">
           <div class="toolbar-brand">
-            <a routerLink="/billing" class="back-link">&larr; Back to Billing</a>
+            <a [routerLink]="isCustomer ? '/customer-orders' : '/billing'" class="back-link">&larr; Back to {{ isCustomer ? 'My Orders' : 'Billing' }}</a>
             <h3>Receipt & Invoice Generator</h3>
           </div>
 
@@ -498,7 +499,7 @@ import { BillDto } from '../core/api.models';
                   <div class="th-item-row">
                     <div class="th-item-name">{{ item.description }}</div>
                     <div class="th-item-calc">
-                      <span>{{ item.quantity }} x {{ (item.totalAmount || item.unitPrice * item.quantity) | number:'1.2-2' }}</span>
+                      <span>{{ item.quantity }} x ₹{{ (item.unitPrice || (item.totalAmount / (item.quantity || 1))) | number:'1.2-2' }}</span>
                       <strong class="text-right">₹{{ (item.totalAmount || item.unitPrice * item.quantity) | number:'1.2-2' }}</strong>
                     </div>
                     @if (globalImei) {
@@ -1611,23 +1612,32 @@ export class BillingPrintComponent implements OnInit {
 
   constructor(
     private readonly route: ActivatedRoute,
-    private readonly api: ApiService
+    private readonly api: ApiService,
+    private readonly auth: AuthService
   ) {}
 
+  get isCustomer(): boolean {
+    return this.auth.currentRole() === 'Customer';
+  }
+
   ngOnInit(): void {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (!id) {
-      this.error = 'No bill id provided.';
-      return;
-    }
+    this.route.queryParamMap.subscribe((q) => {
+      const fmt = q.get('format');
+      if (fmt === '80mm' || fmt === 'thermal') {
+        this.selectedFormat = '80mm';
+      } else if (fmt === 'a4') {
+        this.selectedFormat = 'a4';
+      }
+    });
 
-    // Allow ?format=80mm query param
-    const fmt = this.route.snapshot.queryParamMap.get('format');
-    if (fmt === '80mm' || fmt === 'thermal') {
-      this.selectedFormat = '80mm';
-    }
-
-    this.loadBill(id);
+    this.route.paramMap.subscribe((params) => {
+      const id = params.get('id');
+      if (!id) {
+        this.error = 'No bill id provided.';
+        return;
+      }
+      this.loadBill(id);
+    });
   }
 
   loadBill(id: string): void {

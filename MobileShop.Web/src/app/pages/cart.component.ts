@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { ApiService, apiErrorMessage } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
@@ -377,7 +377,8 @@ export class CartComponent implements OnInit {
   constructor(
     readonly cart: CartService,
     readonly auth: AuthService,
-    private readonly api: ApiService
+    private readonly api: ApiService,
+    private readonly router: Router
   ) {}
 
   ngOnInit(): void {
@@ -476,7 +477,6 @@ export class CartComponent implements OnInit {
       }))
     };
 
-    const printWindow = openPrintWindow();
     this.loading = true;
     this.error = '';
     this.success = '';
@@ -486,23 +486,26 @@ export class CartComponent implements OnInit {
         this.cart.clear();
         this.customerProfileId = '';
         this.promoInput = '';
-        this.success = `Order ${order.orderNumber} was placed successfully for ${money(order.totalAmount)}.`;
-        this.openBillForOrder(order, printWindow, format);
+        this.openBillForOrder(order, format);
       },
       error: (error) => {
-        closePrintWindow(printWindow);
         this.error = apiErrorMessage(error);
         this.loading = false;
-      },
-      complete: () => this.loading = false
+      }
     });
   }
 
-  private openBillForOrder(order: OrderDto, printWindow: Window | null, format: 'a4' | '80mm' = '80mm'): void {
+  private openBillForOrder(order: OrderDto, format: 'a4' | '80mm' = '80mm'): void {
     this.api.post<BillDto>(`/api/billing/orders/${order.id}/ensure`, {}).subscribe({
-      next: (bill) => openBillPrint(bill, printWindow, format),
+      next: (bill) => {
+        this.loading = false;
+        // Seamlessly navigate to the 80mm print slip using Angular Router (exact same mechanism as billing list)
+        this.router.navigate(['/billing', bill.id, 'print'], {
+          queryParams: { format }
+        });
+      },
       error: (error) => {
-        closePrintWindow(printWindow);
+        this.loading = false;
         this.error = `Order ${order.orderNumber} was placed, but the bill could not be opened: ${apiErrorMessage(error)}`;
       }
     });
@@ -536,30 +539,4 @@ function saveOrderHistory(order: OrderDto): void {
     ...current.filter((item) => item.id !== order.id)
   ].slice(0, 20);
   localStorage.setItem(ORDER_HISTORY_KEY, JSON.stringify(next));
-}
-
-function openPrintWindow(): Window | null {
-  const printWindow = window.open('', '_blank');
-  if (printWindow) {
-    printWindow.document.write('<!doctype html><title>Preparing bill</title><p>Preparing bill...</p>');
-    printWindow.document.close();
-  }
-
-  return printWindow;
-}
-
-function openBillPrint(bill: BillDto, printWindow: Window | null, format: 'a4' | '80mm' = '80mm'): void {
-  const url = `/billing/${bill.id}/print?format=${format}`;
-  if (printWindow && !printWindow.closed) {
-    printWindow.location.href = url;
-    return;
-  }
-
-  window.open(url, '_blank');
-}
-
-function closePrintWindow(printWindow: Window | null): void {
-  if (printWindow && !printWindow.closed) {
-    printWindow.close();
-  }
 }
