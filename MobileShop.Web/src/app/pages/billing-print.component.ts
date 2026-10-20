@@ -220,80 +220,226 @@ import { BillDto } from '../core/api.models';
               </div>
             </div>
 
-            <!-- Flipkart / Amazon Standard Itemized Product Table -->
-            <div class="mobile-scroll-hint no-print">↔ Swipe horizontally to view full table details</div>
-            <div class="table-scroll-wrap">
-              <table class="a4-items-table">
-                <thead>
-                  <tr>
-                    <th style="width: 4%;">#</th>
-                    <th style="width: 28%;">Item Description & Specifications</th>
-                    <th style="width: 9%;">HSN/SAC</th>
-                    <th style="width: 5%; text-align: center;">Qty</th>
-                    <th style="width: 11%; text-align: right;">Gross Rate (₹)</th>
-                    <th style="width: 8%; text-align: right;">Discount (₹)</th>
-                    <th style="width: 11%; text-align: right;">Taxable Value (₹)</th>
-                    <th style="width: 8%; text-align: right;">CGST (9%)</th>
-                    <th style="width: 8%; text-align: right;">SGST (9%)</th>
-                    <th style="width: 8%; text-align: right;">Total Amount (₹)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (item of bill.items; track item.id; let idx = $index) {
-                    <tr>
-                      <td class="text-center font-mono">{{ idx + 1 }}</td>
-                      <td>
-                        <div class="item-name"><strong>{{ item.description }}</strong></div>
+            <!-- Items View Mode Switcher (Visible on Mobile Screens only) -->
+            <div class="table-view-toggle no-print">
+              <span class="toggle-label">Items View:</span>
+              <div class="btn-group sm">
+                <button
+                  type="button"
+                  class="btn toggle-btn"
+                  [class.active]="itemsMobileView === 'cards'"
+                  (click)="itemsMobileView = 'cards'"
+                >
+                  📱 Mobile Cards
+                </button>
+                <button
+                  type="button"
+                  class="btn toggle-btn"
+                  [class.active]="itemsMobileView === 'table'"
+                  (click)="itemsMobileView = 'table'"
+                >
+                  📊 Full Table
+                </button>
+              </div>
+            </div>
+
+            <!-- Mobile Itemized Cards View (High-density, completely responsive on phones) -->
+            <div class="a4-items-mobile-view no-print" [class.force-hide]="itemsMobileView === 'table'">
+              <div class="mobile-items-list">
+                @for (item of bill.items; track item.id; let idx = $index) {
+                  <div class="mobile-item-card">
+                    <div class="mic-header">
+                      <span class="mic-idx">#{{ idx + 1 }}</span>
+                      <div class="mic-title-wrap">
+                        <strong class="mic-title">{{ item.description }}</strong>
                         @if (globalImei) {
-                          <div class="imei-subtext"><span class="imei-pill">{{ globalImei }}</span></div>
+                          <span class="imei-pill">{{ globalImei }}</span>
                         }
-                        <div class="specs-subtext">Brand New • Retail Pack • 1-Year Manufacturer Warranty</div>
-                      </td>
-                      <td class="text-center font-mono hsn-code">{{ getItemHsn(item) }}</td>
-                      <td class="text-center font-bold">{{ item.quantity }}</td>
-                      <td class="text-right num-col">{{ (item.unitPrice || (item.totalAmount / (item.quantity || 1))) | number:'1.2-2' }}</td>
-                      <td class="text-right num-col disc-col">
-                        @if (getItemDiscount(item, bill) > 0) {
-                          -₹{{ getItemDiscount(item, bill) | number:'1.2-2' }}
+                      </div>
+                    </div>
+                    <div class="mic-specs">Brand New • Retail Pack • 1-Year Manufacturer Warranty</div>
+                    
+                    <div class="mic-grid">
+                      <div class="mic-cell">
+                        <span class="mic-label">HSN / SAC</span>
+                        <span class="mic-val font-mono">{{ getItemHsn(item) }}</span>
+                      </div>
+                      <div class="mic-cell text-center">
+                        <span class="mic-label">Quantity</span>
+                        <span class="mic-val font-bold">{{ item.quantity }}</span>
+                      </div>
+                      <div class="mic-cell text-right">
+                        <span class="mic-label">Gross Rate</span>
+                        <span class="mic-val">₹{{ (item.unitPrice || (item.totalAmount / (item.quantity || 1))) | number:'1.2-2' }}</span>
+                      </div>
+                    </div>
+
+                    <div class="mic-grid sub-grid">
+                      <div class="mic-cell">
+                        <span class="mic-label">Taxable Value</span>
+                        <span class="mic-val font-bold">₹{{ getItemTaxable(item, bill) | number:'1.2-2' }}</span>
+                      </div>
+                      <div class="mic-cell text-center">
+                        <span class="mic-label">Discount</span>
+                        <span class="mic-val disc-val">
+                          @if (getItemDiscount(item, bill) > 0) {
+                            -₹{{ getItemDiscount(item, bill) | number:'1.2-2' }}
+                          } @else {
+                            ₹0.00
+                          }
+                        </span>
+                      </div>
+                      <div class="mic-cell text-right">
+                        <span class="mic-label">GST (9% + 9%)</span>
+                        <span class="mic-val">₹{{ (getItemCgst(item, bill) + getItemSgst(item, bill)) | number:'1.2-2' }}</span>
+                      </div>
+                    </div>
+
+                    <div class="mic-footer">
+                      <span class="mic-footer-label">Item Total (Incl. Taxes):</span>
+                      <strong class="mic-footer-val">₹{{ getItemTotal(item, bill) | number:'1.2-2' }}</strong>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Mobile Items Grand Summary Bar -->
+              <div class="mobile-items-summary-card">
+                <div class="misc-row">
+                  <span>Total Items:</span>
+                  <strong>{{ bill.items.length }} ({{ getItemsQuantity(bill) }} units)</strong>
+                </div>
+                <div class="misc-row">
+                  <span>Gross Subtotal:</span>
+                  <span>₹{{ bill.subtotal | number:'1.2-2' }}</span>
+                </div>
+                @if (bill.discountAmount > 0) {
+                  <div class="misc-row misc-disc">
+                    <span>Total Discount:</span>
+                    <span>-₹{{ bill.discountAmount | number:'1.2-2' }}</span>
+                  </div>
+                }
+                <div class="misc-row">
+                  <span>Total Taxable Amount:</span>
+                  <strong>₹{{ getTaxableValue(bill) | number:'1.2-2' }}</strong>
+                </div>
+                <div class="misc-row">
+                  <span>Total GST (CGST + SGST):</span>
+                  <span>+₹{{ getTotalTax(bill) | number:'1.2-2' }}</span>
+                </div>
+                <div class="misc-row misc-total">
+                  <span>Items Grand Total:</span>
+                  <strong>₹{{ getGrandTotal(bill) | number:'1.2-2' }}</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Standard Table Container (Desktop default, and mobile when 'table' view selected, ALWAYS printed in @media print) -->
+            <div class="a4-items-table-container" [class.mobile-hidden]="itemsMobileView === 'cards'">
+              <div class="mobile-scroll-hint no-print">↔ Swipe horizontally to view full 10-column table</div>
+              <div class="table-scroll-wrap">
+                <table class="a4-items-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 4%;">#</th>
+                      <th style="width: 28%;">Item Description & Specifications</th>
+                      <th style="width: 9%;">HSN/SAC</th>
+                      <th style="width: 5%; text-align: center;">Qty</th>
+                      <th style="width: 11%; text-align: right;">Gross Rate (₹)</th>
+                      <th style="width: 8%; text-align: right;">Discount (₹)</th>
+                      <th style="width: 11%; text-align: right;">Taxable Value (₹)</th>
+                      <th style="width: 8%; text-align: right;">CGST (9%)</th>
+                      <th style="width: 8%; text-align: right;">SGST (9%)</th>
+                      <th style="width: 8%; text-align: right;">Total Amount (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (item of bill.items; track item.id; let idx = $index) {
+                      <tr>
+                        <td class="text-center font-mono">{{ idx + 1 }}</td>
+                        <td>
+                          <div class="item-name"><strong>{{ item.description }}</strong></div>
+                          @if (globalImei) {
+                            <div class="imei-subtext"><span class="imei-pill">{{ globalImei }}</span></div>
+                          }
+                          <div class="specs-subtext">Brand New • Retail Pack • 1-Year Manufacturer Warranty</div>
+                        </td>
+                        <td class="text-center font-mono hsn-code">{{ getItemHsn(item) }}</td>
+                        <td class="text-center font-bold">{{ item.quantity }}</td>
+                        <td class="text-right num-col">{{ (item.unitPrice || (item.totalAmount / (item.quantity || 1))) | number:'1.2-2' }}</td>
+                        <td class="text-right num-col disc-col">
+                          @if (getItemDiscount(item, bill) > 0) {
+                            -₹{{ getItemDiscount(item, bill) | number:'1.2-2' }}
+                          } @else {
+                            ₹0.00
+                          }
+                        </td>
+                        <td class="text-right num-col taxable-col"><strong>₹{{ getItemTaxable(item, bill) | number:'1.2-2' }}</strong></td>
+                        <td class="text-right num-col tax-col">₹{{ getItemCgst(item, bill) | number:'1.2-2' }}</td>
+                        <td class="text-right num-col tax-col">₹{{ getItemSgst(item, bill) | number:'1.2-2' }}</td>
+                        <td class="text-right num-col item-total-col"><strong>₹{{ getItemTotal(item, bill) | number:'1.2-2' }}</strong></td>
+                      </tr>
+                    }
+                  </tbody>
+                  <tfoot>
+                    <tr class="items-total-row">
+                      <td colspan="3" class="text-right"><strong>Total ({{ bill.items.length }} {{ bill.items.length === 1 ? 'item' : 'items' }})</strong></td>
+                      <td class="text-center font-bold">{{ getItemsQuantity(bill) }}</td>
+                      <td class="text-right font-bold">₹{{ bill.subtotal | number:'1.2-2' }}</td>
+                      <td class="text-right font-bold disc-col">
+                        @if (bill.discountAmount > 0) {
+                          -₹{{ bill.discountAmount | number:'1.2-2' }}
                         } @else {
                           ₹0.00
                         }
                       </td>
-                      <td class="text-right num-col taxable-col"><strong>₹{{ getItemTaxable(item, bill) | number:'1.2-2' }}</strong></td>
-                      <td class="text-right num-col tax-col">₹{{ getItemCgst(item, bill) | number:'1.2-2' }}</td>
-                      <td class="text-right num-col tax-col">₹{{ getItemSgst(item, bill) | number:'1.2-2' }}</td>
-                      <td class="text-right num-col item-total-col"><strong>₹{{ getItemTotal(item, bill) | number:'1.2-2' }}</strong></td>
+                      <td class="text-right font-bold taxable-col">₹{{ getTaxableValue(bill) | number:'1.2-2' }}</td>
+                      <td class="text-right font-bold tax-col">₹{{ getCgst(bill) | number:'1.2-2' }}</td>
+                      <td class="text-right font-bold tax-col">₹{{ getSgst(bill) | number:'1.2-2' }}</td>
+                      <td class="text-right font-bold grand-col">₹{{ getGrandTotal(bill) | number:'1.2-2' }}</td>
                     </tr>
-                  }
-                </tbody>
-                <tfoot>
-                  <tr class="items-total-row">
-                    <td colspan="3" class="text-right"><strong>Total ({{ bill.items.length }} {{ bill.items.length === 1 ? 'item' : 'items' }})</strong></td>
-                    <td class="text-center font-bold">{{ getItemsQuantity(bill) }}</td>
-                    <td class="text-right font-bold">₹{{ bill.subtotal | number:'1.2-2' }}</td>
-                    <td class="text-right font-bold disc-col">
-                      @if (bill.discountAmount > 0) {
-                        -₹{{ bill.discountAmount | number:'1.2-2' }}
-                      } @else {
-                        ₹0.00
-                      }
-                    </td>
-                    <td class="text-right font-bold taxable-col">₹{{ getTaxableValue(bill) | number:'1.2-2' }}</td>
-                    <td class="text-right font-bold tax-col">₹{{ getCgst(bill) | number:'1.2-2' }}</td>
-                    <td class="text-right font-bold tax-col">₹{{ getSgst(bill) | number:'1.2-2' }}</td>
-                    <td class="text-right font-bold grand-col">₹{{ getGrandTotal(bill) | number:'1.2-2' }}</td>
-                  </tr>
-                </tfoot>
-              </table>
+                  </tfoot>
+                </table>
+              </div>
             </div>
 
             <!-- Amazon / Flipkart Secondary HSN / Tax Schedule Table -->
             <div class="hsn-summary-card">
               <div class="hsn-card-header">
-                <span>GST TAX ANALYSIS SCHEDULE (IN ACCORDANCE WITH SECTION 15 OF THE CGST ACT, 2017)</span>
+                <span class="hsn-header-title">GST TAX ANALYSIS SCHEDULE (IN ACCORDANCE WITH SECTION 15 OF THE CGST ACT, 2017)</span>
                 <span class="place-badge">Supply: West Bengal (Intra-State: CGST 9% + SGST 9%)</span>
               </div>
-              <div class="table-scroll-wrap" style="margin-bottom: 0;">
+
+              <!-- Mobile HSN Breakdown Cards (Clean & 100% responsive on phones) -->
+              <div class="hsn-mobile-cards no-print">
+                <div class="hsn-mobile-row">
+                  <div class="hmc-item">
+                    <span class="hmc-label">HSN / SAC Code</span>
+                    <span class="hmc-val font-mono font-bold">8517 13 00</span>
+                  </div>
+                  <div class="hmc-item text-right">
+                    <span class="hmc-label">Taxable Value</span>
+                    <strong class="hmc-val">₹{{ getTaxableValue(bill) | number:'1.2-2' }}</strong>
+                  </div>
+                </div>
+                <div class="hsn-mobile-row sub">
+                  <div class="hmc-item">
+                    <span class="hmc-label">Central Tax (CGST 9%)</span>
+                    <span class="hmc-val">₹{{ getCgst(bill) | number:'1.2-2' }}</span>
+                  </div>
+                  <div class="hmc-item text-right">
+                    <span class="hmc-label">State Tax (SGST 9%)</span>
+                    <span class="hmc-val">₹{{ getSgst(bill) | number:'1.2-2' }}</span>
+                  </div>
+                </div>
+                <div class="hsn-mobile-total">
+                  <span>Total Tax Analysis Amount:</span>
+                  <strong>₹{{ getTotalTax(bill) | number:'1.2-2' }}</strong>
+                </div>
+              </div>
+
+              <!-- Desktop & High-Res Table (Always printed in @media print) -->
+              <div class="table-scroll-wrap hsn-table-wrap" style="margin-bottom: 0;">
                 <table class="hsn-summary-table">
                   <thead>
                     <tr>
@@ -1515,6 +1661,18 @@ import { BillDto } from '../core/api.models';
       display: none;
     }
 
+    .table-view-toggle {
+      display: none;
+    }
+
+    .a4-items-mobile-view {
+      display: none;
+    }
+
+    .hsn-mobile-cards {
+      display: none;
+    }
+
     /* -------------------------------------------------------------------------
        Responsive Mobile Styles (@media screen and (max-width: 768px))
        ------------------------------------------------------------------------- */
@@ -1655,6 +1813,203 @@ import { BillDto } from '../core/api.models';
         font-size: 0.78rem !important;
       }
 
+      /* Items View Mode Toggle (Mobile Only) */
+      .table-view-toggle {
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        padding: 6px 10px;
+        background: #f1f5f9;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+      }
+
+      .toggle-label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #334155;
+      }
+
+      .btn-group.sm .toggle-btn {
+        padding: 6px 12px;
+        font-size: 0.76rem;
+        border: none;
+        background: transparent;
+        color: #64748b;
+        cursor: pointer;
+        font-weight: 600;
+        border-radius: 6px;
+        transition: all 0.15s ease;
+      }
+
+      .btn-group.sm .toggle-btn.active {
+        background: #0d7a5f;
+        color: #ffffff;
+        box-shadow: 0 1px 3px rgba(13, 122, 95, 0.25);
+      }
+
+      /* Mobile Itemized Cards */
+      .a4-items-mobile-view {
+        display: block !important;
+        margin-bottom: 16px;
+      }
+
+      .a4-items-mobile-view.force-hide {
+        display: none !important;
+      }
+
+      .a4-items-table-container.mobile-hidden {
+        display: none !important;
+      }
+
+      .mobile-items-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .mobile-item-card {
+        background: #ffffff;
+        border: 1.5px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 12px;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
+      }
+
+      .mic-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 4px;
+      }
+
+      .mic-idx {
+        background: #0f172a;
+        color: #ffffff;
+        font-size: 0.7rem;
+        font-weight: 800;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: monospace;
+      }
+
+      .mic-title-wrap {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .mic-title {
+        font-size: 0.9rem;
+        color: #0f172a;
+        line-height: 1.3;
+      }
+
+      .mic-specs {
+        font-size: 0.72rem;
+        color: #64748b;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 1px dashed #e2e8f0;
+      }
+
+      .mic-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1.2fr;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .mic-grid.sub-grid {
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #f1f5f9;
+      }
+
+      .mic-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .mic-label {
+        font-size: 0.68rem;
+        color: #64748b;
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+
+      .mic-val {
+        font-size: 0.8rem;
+        color: #1e293b;
+      }
+
+      .mic-val.disc-val {
+        color: #dc2626;
+        font-weight: 600;
+      }
+
+      .mic-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #f8fafc;
+        padding: 8px 10px;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+      }
+
+      .mic-footer-label {
+        font-size: 0.76rem;
+        font-weight: 700;
+        color: #334155;
+      }
+
+      .mic-footer-val {
+        font-size: 0.96rem;
+        font-weight: 800;
+        color: #0d7a5f;
+      }
+
+      /* Mobile Items Grand Summary Card */
+      .mobile-items-summary-card {
+        background: #f8fafc;
+        border: 1.5px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-top: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .misc-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.78rem;
+        color: #334155;
+      }
+
+      .misc-row.misc-disc {
+        color: #dc2626;
+      }
+
+      .misc-row.misc-total {
+        margin-top: 4px;
+        padding-top: 6px;
+        border-top: 1px dashed #cbd5e1;
+        font-size: 0.86rem;
+        color: #0f172a;
+      }
+
+      .misc-row.misc-total strong {
+        color: #0d7a5f;
+        font-size: 0.95rem;
+      }
+
       /* Horizontal scroll hint & container */
       .mobile-scroll-hint {
         display: flex !important;
@@ -1677,15 +2032,108 @@ import { BillDto } from '../core/api.models';
       }
 
       .a4-items-table {
-        min-width: 680px !important;
+        table-layout: auto !important;
+        min-width: 920px !important;
+        width: 100% !important;
         border: none !important;
         margin-bottom: 0 !important;
       }
 
-      .hsn-summary-table {
-        min-width: 580px !important;
-        border: none !important;
-        margin-bottom: 0 !important;
+      .a4-items-table th {
+        white-space: nowrap !important;
+        font-size: 0.72rem !important;
+        padding: 6px 10px !important;
+      }
+
+      .a4-items-table td {
+        padding: 6px 10px !important;
+        font-size: 0.76rem !important;
+      }
+
+      .a4-items-table td.num-col {
+        white-space: nowrap !important;
+      }
+
+      /* HSN Summary Card Mobile Overrides */
+      .hsn-summary-card {
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        margin-bottom: 16px !important;
+        overflow: hidden !important;
+      }
+
+      .hsn-card-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 4px !important;
+        padding: 8px 12px !important;
+      }
+
+      .hsn-header-title {
+        font-size: 0.72rem !important;
+        line-height: 1.3 !important;
+      }
+
+      .place-badge {
+        font-size: 0.68rem !important;
+        color: #cbd5e1 !important;
+      }
+
+      /* Mobile HSN Cards */
+      .hsn-mobile-cards {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        padding: 12px !important;
+        background: #ffffff !important;
+      }
+
+      .hsn-mobile-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .hsn-mobile-row.sub {
+        padding-bottom: 8px;
+        border-bottom: 1px dashed #e2e8f0;
+      }
+
+      .hmc-item {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .hmc-label {
+        font-size: 0.68rem;
+        color: #64748b;
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+
+      .hmc-val {
+        font-size: 0.82rem;
+        color: #1e293b;
+      }
+
+      .hsn-mobile-total {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.82rem;
+        color: #0f172a;
+        padding-top: 4px;
+      }
+
+      .hsn-mobile-total strong {
+        color: #0d7a5f;
+        font-size: 0.92rem;
+      }
+
+      /* Hide complex HSN table on mobile screens */
+      .hsn-table-wrap {
+        display: none !important;
       }
 
       /* Stack Summary & Calc Col */
@@ -1762,14 +2210,43 @@ import { BillDto } from '../core/api.models';
         display: none !important;
       }
 
-      .table-scroll-wrap {
+      .table-view-toggle,
+      .a4-items-mobile-view,
+      .hsn-mobile-cards,
+      .mobile-scroll-hint {
+        display: none !important;
+      }
+
+      .a4-items-table-container,
+      .a4-items-table-container.mobile-hidden {
+        display: block !important;
+      }
+
+      .a4-items-table {
+        display: table !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        table-layout: fixed !important;
+      }
+
+      .hsn-table-wrap {
+        display: block !important;
         overflow: visible !important;
         box-shadow: none !important;
         border: none !important;
       }
 
-      .mobile-scroll-hint {
-        display: none !important;
+      .hsn-summary-table {
+        display: table !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        table-layout: fixed !important;
+      }
+
+      .table-scroll-wrap {
+        overflow: visible !important;
+        box-shadow: none !important;
+        border: none !important;
       }
 
       /* A4 Page Formatting */
@@ -1858,6 +2335,7 @@ export class BillingPrintComponent implements OnInit {
   error = '';
 
   selectedFormat: 'a4' | '80mm' = 'a4';
+  itemsMobileView: 'cards' | 'table' = 'cards';
   paymentMode = 'UPI (GPay / PhonePe / Paytm)';
   customerPhone = '';
   customerGstin = '';
