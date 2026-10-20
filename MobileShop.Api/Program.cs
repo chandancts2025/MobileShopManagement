@@ -90,11 +90,20 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+app.UseMiddleware<ContentSecurityPolicyMiddleware>();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseCors("frontend");
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Mobile Shop Management API v1");
+        options.RoutePrefix = "swagger";
+        options.DocumentTitle = "Mobile Shop Management API Documentation";
+    });
 }
 
 using (var scope = app.Services.CreateScope())
@@ -105,8 +114,6 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseHttpsRedirection();
-app.UseMiddleware<ExceptionHandlingMiddleware>();
-app.UseCors("frontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
