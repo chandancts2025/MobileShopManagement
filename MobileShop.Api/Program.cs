@@ -101,17 +101,14 @@ app.UseMiddleware<ContentSecurityPolicyMiddleware>();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseCors("frontend");
 
-if (app.Environment.IsDevelopment())
+app.MapOpenApi();
+app.UseSwagger();
+app.UseSwaggerUI(options =>
 {
-    app.MapOpenApi();
-    app.UseSwagger();
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Mobile Shop Management API v1");
-        options.RoutePrefix = "swagger";
-        options.DocumentTitle = "Mobile Shop Management API Documentation";
-    });
-}
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Mobile Shop Management API v1");
+    options.RoutePrefix = "swagger";
+    options.DocumentTitle = "Mobile Shop Management API Documentation";
+});
 
 using (var scope = app.Services.CreateScope())
 {
@@ -124,4 +121,22 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+app.MapGet("/", () => Results.Ok(new
+{
+    status = "Healthy",
+    service = "Mobile Shop Management API",
+    version = "1.0",
+    docs = "/swagger",
+    health = "/health",
+    sampleEndpoints = new[]
+    {
+        "/api/products",
+        "/api/categories",
+        "/api/brands"
+    }
+}));
+
+app.MapGet("/health", () => Results.Ok(new { status = "Healthy", utc = DateTime.UtcNow }));
+
 app.Run();
