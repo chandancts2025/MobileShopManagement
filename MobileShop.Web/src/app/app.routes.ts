@@ -29,7 +29,19 @@ export const routes: Routes = [
     path: '',
     component: ShellComponent,
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'catalog' },
+      { path: '', pathMatch: 'full', redirectTo: 'home' },
+      {
+        path: 'home',
+        loadComponent: () => import('./pages/home.component').then((m) => m.HomeComponent)
+      },
+      {
+        path: 'about',
+        loadComponent: () => import('./pages/about.component').then((m) => m.AboutComponent)
+      },
+      {
+        path: 'contact',
+        loadComponent: () => import('./pages/contact.component').then((m) => m.ContactComponent)
+      },
       {
         path: 'catalog',
         loadComponent: () => import('./pages/catalog.component').then((m) => m.CatalogComponent)
@@ -126,5 +138,5 @@ export const routes: Routes = [
       }
     ]
   },
-  { path: '**', redirectTo: 'catalog' }
+  { path: '**', redirectTo: 'home' }
 ];

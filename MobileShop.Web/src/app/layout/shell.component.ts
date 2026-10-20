@@ -35,7 +35,7 @@ interface NavGroup {
       <!-- Sidebar / Mobile Off-Canvas Drawer -->
       <aside class="sidebar" [class.open]="mobileMenuOpen()">
         <div style="display: flex; justify-content: space-between; align-items: center; padding-right: 8px;">
-          <a class="brand" routerLink="/catalog" (click)="closeMobileMenu()">
+          <a class="brand" routerLink="/home" (click)="closeMobileMenu()">
             <span class="brand-mark">📱</span>
             <span>
               <h1>MobileShop</h1>
@@ -93,7 +93,7 @@ interface NavGroup {
       <main class="main">
         <!-- Topbar -->
         <header class="topbar">
-          <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
             <button class="mobile-toggle-btn" (click)="toggleMobileMenu()" title="Open Navigation Menu">
               ☰
             </button>
@@ -101,9 +101,28 @@ interface NavGroup {
               <strong>{{ auth.session()?.roleName || 'Shopper' }} Portal</strong>
               <p class="muted" style="margin: 2px 0 0; font-size: 0.75rem;">Fast, secure retail & device service</p>
             </div>
+            <!-- Owner Contact Badge in Topbar -->
+            <a class="owner-header-badge desktop-only" href="tel:+919851632391" title="Call Owner Chandan Kr Mandal">
+              <span class="owner-badge-dot"></span>
+              <span>Prop: <strong>Chandan Kr Mandal</strong> • 📞 +91 9851632391</span>
+            </a>
           </div>
 
           <div class="topbar-actions">
+            <!-- Storefront Quick Links -->
+            <a class="btn ghost topbar-link desktop-only" routerLink="/home" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" title="Home">
+              <span>🏠</span>
+              <span class="topbar-text">Home</span>
+            </a>
+            <a class="btn ghost topbar-link desktop-only" routerLink="/about" routerLinkActive="active" title="About Us & Founder">
+              <span>ℹ️</span>
+              <span class="topbar-text">About</span>
+            </a>
+            <a class="btn ghost topbar-link desktop-only" routerLink="/contact" routerLinkActive="active" title="Contact Store & Owner">
+              <span>📞</span>
+              <span class="topbar-text">Contact</span>
+            </a>
+
             <!-- Repair Tracking Quick Link -->
             <a class="btn ghost topbar-link" routerLink="/repair-tracking" title="Track phone repair">
               <span>🔧</span>
@@ -148,11 +167,103 @@ interface NavGroup {
         <section class="content">
           <router-outlet />
         </section>
+
+        <!-- Global Storefront Footer with Owner Details -->
+        <footer class="global-footer">
+          <div class="footer-inner">
+            <div class="footer-grid">
+              <div class="footer-col brand-col">
+                <div class="footer-brand">
+                  <span class="f-mark">📱</span>
+                  <div>
+                    <h4>Mobile Shop Management</h4>
+                    <span class="f-sub">Retail & Express Repair Hub</span>
+                  </div>
+                </div>
+                <p class="f-desc">
+                  Kolkata's trusted destination for genuine Apple, Samsung, OnePlus & Google Pixel smartphones. 100% brand-sealed units, official GST invoices, transparent diagnostics, and 30-min express repairs.
+                </p>
+                <div class="owner-card-mini">
+                  <span class="crown-icon">👑</span>
+                  <div>
+                    <span class="owner-label">Managing Proprietor</span>
+                    <strong class="owner-name-txt">Chandan Kr Mandal</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="footer-col">
+                <h5>Store Navigation</h5>
+                <ul class="f-links">
+                  <li><a routerLink="/home">🏠 Home Page</a></li>
+                  <li><a routerLink="/catalog">📱 Smartphone Catalog</a></li>
+                  <li><a routerLink="/about">ℹ️ About Us & Founder</a></li>
+                  <li><a routerLink="/contact">📞 Contact & Directions</a></li>
+                  <li><a routerLink="/repair-tracking">🔧 Repair Status Tracker</a></li>
+                  <li><a routerLink="/cart">🛒 Shopping Cart</a></li>
+                </ul>
+              </div>
+
+              <div class="footer-col">
+                <h5>Store Hours & Compliance</h5>
+                <div class="f-timings-box">
+                  <p><strong>Monday – Saturday:</strong><br />09:30 AM – 09:30 PM</p>
+                  <p><strong>Sunday:</strong><br />10:00 AM – 08:00 PM</p>
+                  <span class="badge good" style="font-size: 0.72rem; display: inline-block; margin-top: 4px;">✓ Open All 7 Days</span>
+                </div>
+                <div class="f-compliance">
+                  <p><strong>GSTIN:</strong> 19AABCX1234F1Z8</p>
+                  <p><strong>UPI:</strong> chandankr.mandal87&#64;okaxis</p>
+                </div>
+              </div>
+
+              <div class="footer-col contact-col">
+                <h5>Direct Contact & Location</h5>
+                <p class="f-addr">
+                  📍 <strong>Store Address:</strong><br />
+                  3B8-2D, Sanhita Township, Newtown, Kolkata 700135, West Bengal, India.
+                </p>
+                <div class="f-contact-buttons">
+                  <a href="tel:+919851632391" class="f-btn call">
+                    <span>📞</span> +91 9851632391
+                  </a>
+                  <a href="https://wa.me/919851632391" target="_blank" rel="noopener" class="f-btn wa">
+                    <span>💬</span> WhatsApp Direct
+                  </a>
+                  <a href="mailto:chandankr.mandal87@gmail.com" class="f-btn mail">
+                    <span>✉️</span> chandankr.mandal87&#64;gmail.com
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <div class="footer-bottom">
+              <div>
+                © 2026 Mobile Shop Management. All rights reserved. • Proprietor: <strong>Chandan Kr Mandal</strong>
+              </div>
+              <div class="f-bottom-links">
+                <a routerLink="/home">Home</a>
+                <span>•</span>
+                <a routerLink="/catalog">Catalog</a>
+                <span>•</span>
+                <a routerLink="/about">About Us</a>
+                <span>•</span>
+                <a routerLink="/contact">Contact</a>
+                <span>•</span>
+                <a routerLink="/repair-tracking">Repair Tracker</a>
+              </div>
+            </div>
+          </div>
+        </footer>
       </main>
 
       <!-- Mobile Bottom Navigation Bar (Phones only) -->
       <nav class="mobile-bottom-nav">
-        <a class="bottom-nav-item" routerLink="/catalog" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+        <a class="bottom-nav-item" routerLink="/home" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+          <span class="bottom-nav-icon">🏠</span>
+          <span>Home</span>
+        </a>
+        <a class="bottom-nav-item" routerLink="/catalog" routerLinkActive="active">
           <span class="bottom-nav-icon">📱</span>
           <span>Catalog</span>
         </a>
@@ -169,22 +280,10 @@ interface NavGroup {
           <span class="bottom-nav-icon">🔧</span>
           <span>Repairs</span>
         </a>
-        @if (auth.hasAnyRole(['Customer'])) {
-          <a class="bottom-nav-item" routerLink="/customer-orders" routerLinkActive="active">
-            <span class="bottom-nav-icon">📦</span>
-            <span>Orders</span>
-          </a>
-        } @else if (auth.hasAtLeastStaffRole()) {
-          <a class="bottom-nav-item" routerLink="/dashboard" routerLinkActive="active">
-            <span class="bottom-nav-icon">📊</span>
-            <span>Dashboard</span>
-          </a>
-        } @else {
-          <a class="bottom-nav-item" routerLink="/wishlist" routerLinkActive="active">
-            <span class="bottom-nav-icon">❤️</span>
-            <span>Wishlist</span>
-          </a>
-        }
+        <a class="bottom-nav-item" routerLink="/contact" routerLinkActive="active">
+          <span class="bottom-nav-icon">📞</span>
+          <span>Contact</span>
+        </a>
         <button class="bottom-nav-item" (click)="toggleMobileMenu()" style="background: none; border: none; font: inherit;">
           <span class="bottom-nav-icon">☰</span>
           <span>Menu</span>
@@ -317,6 +416,218 @@ interface NavGroup {
         padding: 1px 4px;
       }
     }
+
+    .owner-header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font-size: 0.8rem;
+      color: var(--text);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .owner-header-badge:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: rgba(13, 122, 95, 0.05);
+    }
+    .owner-badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #16a34a;
+      box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25);
+    }
+
+    /* Global Storefront Footer */
+    .global-footer {
+      background: #0f172a;
+      color: #cbd5e1;
+      padding: 48px 32px 28px;
+      border-top: 1px solid #1e293b;
+      margin-top: 48px;
+    }
+    .footer-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr 1.3fr;
+      gap: 36px;
+      margin-bottom: 40px;
+    }
+    .footer-col h5 {
+      color: #ffffff;
+      font-size: 0.95rem;
+      font-weight: 800;
+      margin: 0 0 16px;
+      letter-spacing: 0.02em;
+    }
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .f-mark {
+      font-size: 1.8rem;
+    }
+    .footer-brand h4 {
+      color: #ffffff;
+      font-size: 1.15rem;
+      font-weight: 800;
+      margin: 0;
+    }
+    .f-sub {
+      font-size: 0.75rem;
+      color: #6ee7b7;
+      font-weight: 700;
+      display: block;
+    }
+    .f-desc {
+      font-size: 0.86rem;
+      line-height: 1.6;
+      color: #94a3b8;
+      margin: 0 0 16px;
+    }
+    .owner-card-mini {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .crown-icon {
+      font-size: 1.3rem;
+    }
+    .owner-label {
+      display: block;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      color: #94a3b8;
+      font-weight: 700;
+    }
+    .owner-name-txt {
+      font-size: 0.92rem;
+      color: #ffffff;
+      font-weight: 800;
+    }
+    .f-links {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .f-links a {
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 0.88rem;
+      transition: color 0.15s ease;
+    }
+    .f-links a:hover {
+      color: #38bdf8;
+    }
+    .f-timings-box {
+      font-size: 0.86rem;
+      line-height: 1.5;
+      color: #cbd5e1;
+    }
+    .f-timings-box p {
+      margin: 0 0 8px;
+    }
+    .f-compliance {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+    .f-compliance p {
+      margin: 2px 0;
+    }
+    .f-addr {
+      font-size: 0.86rem;
+      line-height: 1.5;
+      color: #cbd5e1;
+      margin: 0 0 16px;
+    }
+    .f-contact-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .f-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-decoration: none;
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      transition: all 0.15s ease;
+    }
+    .f-btn:hover {
+      background: rgba(255, 255, 255, 0.16);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+    .f-btn.wa:hover {
+      color: #4ade80;
+      border-color: #4ade80;
+    }
+    .footer-bottom {
+      border-top: 1px solid #1e293b;
+      padding-top: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 0.82rem;
+      color: #64748b;
+    }
+    .footer-bottom strong {
+      color: #e2e8f0;
+    }
+    .f-bottom-links {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .f-bottom-links a {
+      color: #94a3b8;
+      text-decoration: none;
+    }
+    .f-bottom-links a:hover {
+      color: #ffffff;
+    }
+    @media (max-width: 960px) {
+      .footer-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    @media (max-width: 600px) {
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+      .global-footer {
+        padding: 32px 18px 84px;
+      }
+    }
   `]
 })
 export class ShellComponent implements OnInit {
@@ -327,7 +638,10 @@ export class ShellComponent implements OnInit {
     {
       title: 'Storefront',
       items: [
+        { label: 'Home', route: '/home', icon: '🏠' },
         { label: 'Product catalog', route: '/catalog', icon: '📱' },
+        { label: 'About Us & Founder', route: '/about', icon: 'ℹ️' },
+        { label: 'Contact Us & Store', route: '/contact', icon: '📞' },
         { label: 'Cart and checkout', route: '/cart', icon: '🛒' },
         { label: 'Wishlist', route: '/wishlist', icon: '❤️', roles: ['Customer'] },
         { label: 'Order tracking', route: '/order-tracking', icon: '🚚', roles: ['Customer'] },
