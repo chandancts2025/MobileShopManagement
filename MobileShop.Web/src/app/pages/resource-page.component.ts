@@ -45,181 +45,168 @@ import {
         <div class="message success" style="margin-bottom: 14px;">{{ success }}</div>
       }
 
-      <div class="split">
-        <section class="panel" [class.loading]="loading">
-          <div class="panel-header">
-            <div class="toolbar-left" style="flex: 1;">
-              <input class="input" style="max-width: 360px;" name="search" [(ngModel)]="query.search" (keyup.enter)="load()" [placeholder]="'🔍 Search ' + cfg.title.toLowerCase() + '...'">
-              <button class="btn" type="button" (click)="load()">Search</button>
-              @if (query.search) {
-                <button class="btn ghost" type="button" (click)="query.search = ''; load()">Clear</button>
-              }
-            </div>
-            <div class="toolbar-right">
-              <button class="btn ghost" type="button" (click)="previousPage()" [disabled]="query.pageNumber <= 1">← Prev</button>
-              <span class="badge">Page {{ query.pageNumber }}</span>
-              <button class="btn ghost" type="button" (click)="nextPage()" [disabled]="items.length < query.pageSize">Next →</button>
-            </div>
-          </div>
-
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  @for (column of cfg.columns; track column.key) {
-                    <th>{{ column.label }}</th>
-                  }
-                  <th style="text-align: right; min-width: 130px;">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (item of items; track trackRecord($index, item)) {
-                  <tr [class.active-row]="isRowActive(item)">
-                    @for (column of cfg.columns; track column.key) {
-                      <td>
-                        @if (isSku(column.key)) {
-                          <span class="code-pill">{{ cell(item, column.key) }}</span>
-                        } @else if (isBrand(column.key)) {
-                          <span class="cell-chip brand">{{ cell(item, column.key) }}</span>
-                        } @else if (isCategory(column.key)) {
-                          <span class="cell-chip category">{{ cell(item, column.key) }}</span>
-                        } @else if (isPrice(column.key)) {
-                          <span class="cell-price">{{ cell(item, column.key) }}</span>
-                        } @else if (isStock(column.key)) {
-                          <span class="cell-stock" [class]="stockBadgeClass(item[column.key])">
-                            {{ cell(item, column.key) }}
-                          </span>
-                        } @else {
-                          {{ cell(item, column.key) }}
-                        }
-                      </td>
-                    }
-                    <td class="actions" style="text-align: right;">
-                      @if (canUpdate()) {
-                        <button class="btn ghost" type="button" (click)="startEdit(item)" title="Edit this record">
-                          ✏️ Edit
-                        </button>
-                      }
-                      @if (canDelete()) {
-                        <button class="btn danger" type="button" (click)="deleteItem(item)" title="Delete this record" style="margin-left: 4px;">
-                          🗑️
-                        </button>
-                      }
-                      @if (!canUpdate() && !canDelete()) {
-                        <span class="muted" style="font-size: 0.8rem;">View only</span>
-                      }
-                    </td>
-                  </tr>
-                } @empty {
-                  <tr>
-                    <td [attr.colspan]="cfg.columns.length + 1">
-                      <div class="empty-state">
-                        <div style="font-size: 2.2rem; margin-bottom: 8px;">📦</div>
-                        <strong>No {{ cfg.title.toLowerCase() }} found</strong>
-                        <p>Try refining your search keyword or add a new record to get started.</p>
-                        @if (canCreate()) {
-                          <button class="btn primary" type="button" style="margin-top: 14px;" (click)="startCreate()">
-                            + Add New {{ singularTitle(cfg.title) }}
-                          </button>
-                        }
-                      </div>
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <aside class="panel">
-          <div class="panel-header">
-            <div>
-              <strong style="font-size: 1rem; color: #0f172a;">
-                {{ formMode === 'update' ? '✏️ Edit ' + singularTitle(cfg.title) : '✨ New ' + singularTitle(cfg.title) }}
-              </strong>
-              @if (editingId) {
-                <div style="font-size: 0.76rem; color: #64748b; font-family: monospace;">ID: #{{ editingId }}</div>
-              }
-            </div>
-            @if (formOpen) {
-              <button class="btn ghost" type="button" (click)="closeForm()" style="padding: 4px 10px; font-size: 0.82rem;">✕ Close</button>
-            }
-          </div>
-          <div class="panel-body">
-            @if (cfg.readOnly) {
-              <p class="muted">This endpoint is read-only in the administrative console.</p>
-            } @else if (formOpen) {
-              <form class="grid" #formRef="ngForm" (ngSubmit)="save(formRef.valid ?? false)">
-                <div class="grid two">
-                  @for (field of visibleFields(); track field.key) {
-                    <label class="field" [class.check-field]="field.type === 'checkbox'" [style.grid-column]="field.type === 'textarea' ? 'span 2' : 'auto'">
-                      @if (field.type !== 'checkbox') {
-                        <span>
-                          {{ field.label }}
-                          @if (field.required) {
-                            <span class="required-star">*</span>
-                          }
-                        </span>
-                      }
-
-                      @switch (field.type) {
-                        @case ('textarea') {
-                          <textarea class="textarea" [name]="field.key" [(ngModel)]="form[field.key]" [required]="field.required || false" [placeholder]="field.placeholder || ''"></textarea>
-                        }
-                        @case ('select') {
-                          <select class="select" [name]="field.key" [(ngModel)]="form[field.key]" [required]="field.required || false">
-                            <option [ngValue]="null">-- Select {{ field.label }} --</option>
-                            @for (option of fieldOptions(field); track option.label + option.value) {
-                              <option [ngValue]="option.value">{{ option.label }}</option>
-                            }
-                          </select>
-                        }
-                        @case ('checkbox') {
-                          <input type="checkbox" [name]="field.key" [(ngModel)]="form[field.key]">
-                          <span>{{ field.label }}</span>
-                        }
-                        @default {
-                          <input class="input"
-                            [type]="field.type"
-                            [name]="field.key"
-                            [(ngModel)]="form[field.key]"
-                            [required]="field.required || false"
-                            [attr.min]="field.min ?? null"
-                            [attr.max]="field.max ?? null"
-                            [attr.step]="field.step ?? null"
-                            [placeholder]="field.placeholder || ''">
-                        }
-                      }
-
-                      @if (field.hint) {
-                        <small>{{ field.hint }}</small>
-                      }
-                    </label>
-                  }
-                </div>
-
-                <div style="display: flex; gap: 10px; margin-top: 10px; padding-top: 14px; border-top: 1px solid #e2e8f0;">
-                  <button class="btn primary" type="submit" [disabled]="formRef.invalid || saving" style="flex: 1;">
-                    {{ saving ? 'Saving...' : '💾 Save ' + singularTitle(cfg.title) }}
-                  </button>
-                  <button class="btn ghost" type="button" (click)="closeForm()">Cancel</button>
-                </div>
-              </form>
-            } @else {
-              <div style="text-align: center; padding: 24px 10px; color: #64748b;">
-                <div style="font-size: 2.2rem; margin-bottom: 8px;">📝</div>
-                <strong style="color: #1e293b; display: block; margin-bottom: 4px;">No Record Selected</strong>
-                <p style="font-size: 0.88rem; margin: 0 0 16px;">Select an item from the table to inspect/edit its details, or click below to create a brand new entry.</p>
-                @if (canCreate()) {
-                  <button class="btn primary" type="button" (click)="startCreate()">
-                    + Add New {{ singularTitle(cfg.title) }}
-                  </button>
+      <!-- Expandable Add/Edit Form Card (Opens ON TOP above list) -->
+      @if (formOpen && !cfg.readOnly) {
+        <div class="top-form-card" id="resourceFormCard">
+          <div class="top-form-header">
+            <div class="top-form-title">
+              <span style="font-size: 1.25rem;">{{ formMode === 'update' ? '✏️' : '✨' }}</span>
+              <div>
+                <h3>{{ formMode === 'update' ? 'Edit ' + singularTitle(cfg.title) : 'Create New ' + singularTitle(cfg.title) }}</h3>
+                @if (editingId) {
+                  <span style="font-size: 0.76rem; color: #64748b; font-family: monospace;">Record ID: #{{ editingId }}</span>
                 }
               </div>
+            </div>
+            <button class="btn ghost" type="button" (click)="closeForm()" style="padding: 5px 12px; font-size: 0.82rem;">✕ Cancel & Close</button>
+          </div>
+
+          <div class="top-form-body">
+            <form #formRef="ngForm" (ngSubmit)="save(formRef.valid ?? false)">
+              <div class="grid three" style="gap: 16px;">
+                @for (field of visibleFields(); track field.key) {
+                  <label class="field" [class.check-field]="field.type === 'checkbox'" [style.grid-column]="field.type === 'textarea' ? 'span 3' : 'auto'">
+                    @if (field.type !== 'checkbox') {
+                      <span>
+                        {{ field.label }}
+                        @if (field.required) {
+                          <span class="required-star">*</span>
+                        }
+                      </span>
+                    }
+
+                    @switch (field.type) {
+                      @case ('textarea') {
+                        <textarea class="textarea" [name]="field.key" [(ngModel)]="form[field.key]" [required]="field.required || false" [placeholder]="field.placeholder || ''" rows="3"></textarea>
+                      }
+                      @case ('select') {
+                        <select class="select" [name]="field.key" [(ngModel)]="form[field.key]" [required]="field.required || false">
+                          <option [ngValue]="null">-- Select {{ field.label }} --</option>
+                          @for (option of fieldOptions(field); track option.label + option.value) {
+                            <option [ngValue]="option.value">{{ option.label }}</option>
+                          }
+                        </select>
+                      }
+                      @case ('checkbox') {
+                        <input type="checkbox" [name]="field.key" [(ngModel)]="form[field.key]">
+                        <span>{{ field.label }}</span>
+                      }
+                      @default {
+                        <input class="input"
+                          [type]="field.type"
+                          [name]="field.key"
+                          [(ngModel)]="form[field.key]"
+                          [required]="field.required || false"
+                          [attr.min]="field.min ?? null"
+                          [attr.max]="field.max ?? null"
+                          [attr.step]="field.step ?? null"
+                          [placeholder]="field.placeholder || ''">
+                      }
+                    }
+
+                    @if (field.hint) {
+                      <small>{{ field.hint }}</small>
+                    }
+                  </label>
+                }
+              </div>
+
+              <div class="top-form-footer">
+                <button class="btn ghost" type="button" (click)="closeForm()">Cancel</button>
+                <button class="btn primary" type="submit" [disabled]="formRef.invalid || saving">
+                  {{ saving ? 'Saving...' : '💾 Save ' + singularTitle(cfg.title) }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      }
+
+      <!-- Main Data List (Full 100% Width Below Form) -->
+      <section class="panel" [class.loading]="loading">
+        <div class="panel-header">
+          <div class="toolbar-left" style="flex: 1;">
+            <input class="input" style="max-width: 360px;" name="search" [(ngModel)]="query.search" (keyup.enter)="load()" [placeholder]="'🔍 Search ' + cfg.title.toLowerCase() + '...'">
+            <button class="btn" type="button" (click)="load()">Search</button>
+            @if (query.search) {
+              <button class="btn ghost" type="button" (click)="query.search = ''; load()">Clear</button>
             }
           </div>
-        </aside>
-      </div>
+          <div class="toolbar-right">
+            <button class="btn ghost" type="button" (click)="previousPage()" [disabled]="query.pageNumber <= 1">← Prev</button>
+            <span class="badge">Page {{ query.pageNumber }}</span>
+            <button class="btn ghost" type="button" (click)="nextPage()" [disabled]="items.length < query.pageSize">Next →</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table style="width: 100%;">
+            <thead>
+              <tr>
+                @for (column of cfg.columns; track column.key) {
+                  <th>{{ column.label }}</th>
+                }
+                <th class="actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of items; track trackRecord($index, item)) {
+                <tr [class.active-row]="isRowActive(item)">
+                  @for (column of cfg.columns; track column.key) {
+                    <td>
+                      @if (isSku(column.key)) {
+                        <span class="code-pill">{{ cell(item, column.key) }}</span>
+                      } @else if (isBrand(column.key)) {
+                        <span class="cell-chip brand">{{ cell(item, column.key) }}</span>
+                      } @else if (isCategory(column.key)) {
+                        <span class="cell-chip category">{{ cell(item, column.key) }}</span>
+                      } @else if (isPrice(column.key)) {
+                        <span class="cell-price">{{ cell(item, column.key) }}</span>
+                      } @else if (isStock(column.key)) {
+                        <span class="cell-stock" [class]="stockBadgeClass(item[column.key])">
+                          {{ cell(item, column.key) }}
+                        </span>
+                      } @else {
+                        {{ cell(item, column.key) }}
+                      }
+                    </td>
+                  }
+                  <td class="actions" style="text-align: right;">
+                    @if (canUpdate()) {
+                      <button class="btn ghost" type="button" (click)="startEdit(item)" title="Edit this record">
+                        ✏️ Edit
+                      </button>
+                    }
+                    @if (canDelete()) {
+                      <button class="btn danger" type="button" (click)="deleteItem(item)" title="Delete this record" style="margin-left: 4px;">
+                        🗑️
+                      </button>
+                    }
+                    @if (!canUpdate() && !canDelete()) {
+                      <span class="muted" style="font-size: 0.8rem;">View only</span>
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td [attr.colspan]="cfg.columns.length + 1">
+                    <div class="empty-state">
+                      <div style="font-size: 2.2rem; margin-bottom: 8px;">📦</div>
+                      <strong>No {{ cfg.title.toLowerCase() }} found</strong>
+                      <p>Try refining your search keyword or add a new record to get started.</p>
+                      @if (canCreate()) {
+                        <button class="btn primary" type="button" style="margin-top: 14px;" (click)="startCreate()">
+                          + Add New {{ singularTitle(cfg.title) }}
+                        </button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
     } @else {
       <div class="message error">{{ error || 'Unknown resource.' }}</div>
     }
@@ -337,6 +324,7 @@ export class ResourcePageComponent implements OnInit {
     this.form = { ...(this.config.defaultForm?.() ?? {}) };
     this.formOpen = true;
     this.success = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   startEdit(item: ResourceRecord): void {
@@ -352,6 +340,7 @@ export class ResourcePageComponent implements OnInit {
     };
     this.formOpen = true;
     this.success = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   closeForm(): void {

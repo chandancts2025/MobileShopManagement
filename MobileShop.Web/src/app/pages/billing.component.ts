@@ -27,8 +27,8 @@ import { money, dateTime } from '../core/formatters';
           <button class="btn secondary" type="button" (click)="loadBills()">
             🔄 Refresh
           </button>
-          <button class="btn primary pos-btn" type="button" (click)="openQuickBillModal()">
-            ⚡ + Fast POS Walk-in Bill
+          <button class="btn primary pos-btn" type="button" (click)="toggleQuickBill()">
+            {{ showQuickBillModal ? '✕ Close POS Form' : '⚡ + Fast POS Walk-in Bill' }}
           </button>
         </div>
       </div>
@@ -66,6 +66,177 @@ import { money, dateTime } from '../core/formatters';
           <p class="kpi-sub">{{ dueCount }} bills awaiting settlement</p>
         </div>
       </section>
+
+      <!-- Top-Expandable Quick POS Walk-in Billing Form -->
+      @if (showQuickBillModal) {
+        <section class="top-form-card" [class.loading]="submittingQuickBill" style="margin-bottom: 22px;">
+          <div class="top-form-header">
+            <div class="top-form-title">
+              <span class="badge good">⚡ FAST POS BILL</span>
+              <h3>Quick Walk-in Counter POS Billing</h3>
+            </div>
+            <button class="btn ghost" type="button" (click)="closeQuickBillModal()" title="Collapse POS billing form">
+              ✕ Close
+            </button>
+          </div>
+
+          <div class="top-form-body">
+            @if (modalError) {
+              <div class="message error" style="margin-bottom: 12px;">{{ modalError }}</div>
+            }
+
+            <div class="grid three">
+              <label class="field">
+                <span>Select Existing Customer</span>
+                <select class="input" [(ngModel)]="quickBill.customerProfileId" (change)="onCustomerSelected()">
+                  @for (c of customers; track c.id) {
+                    <option [value]="c.id">{{ c.fullName }} ({{ c.phoneNumber }})</option>
+                  }
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Customer Mobile Number</span>
+                <input type="text" class="input" [(ngModel)]="quickBill.phoneNumber" placeholder="e.g. 9851632391" />
+              </label>
+
+              <label class="field">
+                <span>Payment Mode</span>
+                <select class="input" [(ngModel)]="quickBill.paymentMethod">
+                  <option value="Cash">Cash Counter</option>
+                  <option value="UPI (GPay / PhonePe / Paytm)">UPI (GPay / PhonePe / Paytm)</option>
+                  <option value="Credit / Debit Card">Credit / Debit Card</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="grid three" style="margin-top: 10px;">
+              <label class="field" style="grid-column: span 2;">
+                <span>Select Product Catalog SKU <span class="required-star">*</span></span>
+                <select class="input" [(ngModel)]="quickBill.productId" (change)="onProductSelected()">
+                  <option value="">-- Choose Smartphone / Accessory --</option>
+                  @for (p of products; track p.id) {
+                    <option [value]="p.id">
+                      {{ p.name }} - ₹{{ p.price | number:'1.2-2' }} (Stock: {{ p.quantityOnHand }})
+                    </option>
+                  }
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Quantity</span>
+                <input type="number" min="1" class="input" [(ngModel)]="quickBill.quantity" (change)="recalcModalTotal()" />
+              </label>
+            </div>
+
+            <div class="grid two" style="margin-top: 10px;">
+              <label class="field">
+                <span>Device IMEI / Serial Number (Optional)</span>
+                <input type="text" class="input" [(ngModel)]="quickBill.imeiNumber" placeholder="e.g. 356789123456789" />
+              </label>
+
+              <div>
+                <label class="field">
+                  <span>Promotional Coupon Code (Optional)</span>
+                  @if (quickBill.appliedPromo) {
+                    <div class="modal-applied-promo">
+                      <div>
+                        <strong>✓ Coupon {{ quickBill.appliedPromo.code }} Applied!</strong>
+                        <span class="disc-sub">Deduction: -₹{{ quickModalDiscount() | number:'1.2-2' }}</span>
+                      </div>
+                      <button type="button" class="btn-clear-promo" (click)="removeModalPromo()">✕ Remove</button>
+                    </div>
+                  } @else {
+                    <div class="promo-apply-row">
+                      <input
+                        type="text"
+                        class="input"
+                        [(ngModel)]="quickBill.promoCode"
+                        placeholder="e.g. DIWALI2026, SAVE10, FLAT500"
+                        style="text-transform: uppercase;"
+                        (keyup.enter)="applyModalPromo()"
+                      />
+                      <button
+                        type="button"
+                        class="btn-apply-code"
+                        [disabled]="validatingModalPromo || !quickBill.promoCode.trim()"
+                        (click)="applyModalPromo()"
+                      >
+                        {{ validatingModalPromo ? 'Checking...' : 'Apply Code' }}
+                      </button>
+                    </div>
+                    @if (modalPromoError) {
+                      <div class="modal-promo-err">{{ modalPromoError }}</div>
+                    }
+                    <div class="modal-quick-chips">
+                      <span class="chips-lbl">Quick Deals:</span>
+                      <button type="button" class="m-chip" (click)="setModalPromo('DIWALI2026')">DIWALI2026 (-₹2500)</button>
+                      <button type="button" class="m-chip" (click)="setModalPromo('SAVE10')">SAVE10 (10% OFF)</button>
+                      <button type="button" class="m-chip" (click)="setModalPromo('FLAT500')">FLAT500 (-₹500)</button>
+                    </div>
+                  }
+                </label>
+              </div>
+            </div>
+
+            <!-- Price & Tax Calculation Summary -->
+            <div class="calc-box" style="margin-top: 14px;">
+              <div class="calc-row">
+                <span>Selected Item:</span>
+                <strong>{{ quickBill.selectedProductName || 'None selected' }}</strong>
+              </div>
+              <div class="calc-row">
+                <span>Gross Subtotal:</span>
+                <span>{{ quickBill.quantity }} × ₹{{ quickBill.unitPrice | number:'1.2-2' }} = <strong>₹{{ quickModalSubtotal() | number:'1.2-2' }}</strong></span>
+              </div>
+              @if (quickModalDiscount() > 0) {
+                <div class="calc-row disc-calc">
+                  <span>Discount ({{ quickBill.appliedPromo?.code || 'Special' }}):</span>
+                  <strong>-₹{{ quickModalDiscount() | number:'1.2-2' }}</strong>
+                </div>
+              }
+              <div class="calc-row taxable-calc">
+                <span>Net Taxable Value:</span>
+                <strong>₹{{ quickModalTaxable() | number:'1.2-2' }}</strong>
+              </div>
+              <div class="calc-row">
+                <span>Central GST (CGST &#64; 9.0%):</span>
+                <span>+₹{{ quickModalCgst() | number:'1.2-2' }}</span>
+              </div>
+              <div class="calc-row">
+                <span>State GST (SGST &#64; 9.0%):</span>
+                <span>+₹{{ quickModalSgst() | number:'1.2-2' }}</span>
+              </div>
+              <div class="calc-row total-row">
+                <span>Total Amount Payable:</span>
+                <strong class="total-big">₹{{ quickModalTotal() | number:'1.2-2' }}</strong>
+              </div>
+            </div>
+
+            <div class="top-form-footer">
+              <button class="btn ghost" type="button" (click)="closeQuickBillModal()">Cancel</button>
+              <div style="display: flex; gap: 8px;">
+                <button
+                  type="button"
+                  class="btn-format pos-80mm-btn"
+                  [disabled]="submittingQuickBill || !quickBill.productId"
+                  (click)="submitQuickBill('80mm')"
+                >
+                  {{ submittingQuickBill ? 'Processing...' : '🧾 Save & Print 80mm Slip' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn-format a4-btn"
+                  [disabled]="submittingQuickBill || !quickBill.productId"
+                  (click)="submitQuickBill('a4')"
+                >
+                  {{ submittingQuickBill ? 'Processing...' : '📄 Save & Print A4 Invoice' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      }
 
       <!-- Main Panel with Search, Filters & Invoices Table -->
       <div class="panel" [class.loading]="loading">
@@ -148,7 +319,7 @@ import { money, dateTime } from '../core/formatters';
                   <th>Total (₹)</th>
                   <th>Balance Due (₹)</th>
                   <th>Status</th>
-                  <th style="text-align: right;">Print & Actions</th>
+                  <th class="actions">Print & Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -190,7 +361,7 @@ import { money, dateTime } from '../core/formatters';
                         {{ bill.balanceDue === 0 ? '✓ PAID' : '⏳ BALANCE DUE' }}
                       </span>
                     </td>
-                    <td style="text-align: right;">
+                    <td class="actions">
                       <div class="action-btn-group">
                         <!-- Direct A4 Format Print -->
                         <a
@@ -232,185 +403,6 @@ import { money, dateTime } from '../core/formatters';
           }
         </div>
       </div>
-
-      <!-- Quick Walk-in Counter POS Bill Modal -->
-      @if (showQuickBillModal) {
-        <div class="modal-backdrop" (click)="closeQuickBillModal()">
-          <div class="modal-content" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <div>
-                <h3>⚡ Quick POS Walk-in Billing</h3>
-                <p>Generate immediate counter bill with IMEI tracking and instant receipt print</p>
-              </div>
-              <button class="close-modal-btn" (click)="closeQuickBillModal()">✕</button>
-            </div>
-
-            <div class="modal-body">
-              @if (modalError) {
-                <div class="message error" style="margin-bottom: 12px;">{{ modalError }}</div>
-              }
-
-              <!-- Customer Details -->
-              <div class="form-section">
-                <div class="section-title">1. Customer Information</div>
-                <div class="grid two">
-                  <label class="field">
-                    <span>Select Existing Customer</span>
-                    <select class="input" [(ngModel)]="quickBill.customerProfileId" (change)="onCustomerSelected()">
-                      @for (c of customers; track c.id) {
-                        <option [value]="c.id">{{ c.fullName }} ({{ c.phoneNumber }})</option>
-                      }
-                    </select>
-                  </label>
-
-                  <label class="field">
-                    <span>Customer Mobile Number</span>
-                    <input type="text" class="input" [(ngModel)]="quickBill.phoneNumber" placeholder="e.g. 9851632391" />
-                  </label>
-                </div>
-              </div>
-
-              <!-- Product / Item Details -->
-              <div class="form-section">
-                <div class="section-title">2. Product / Handset Item</div>
-                <div class="grid two">
-                  <label class="field">
-                    <span>Select Product Catalog SKU</span>
-                    <select class="input" [(ngModel)]="quickBill.productId" (change)="onProductSelected()">
-                      <option value="">-- Choose Smartphone / Accessory --</option>
-                      @for (p of products; track p.id) {
-                        <option [value]="p.id">
-                          {{ p.name }} - ₹{{ p.price | number:'1.2-2' }} (Stock: {{ p.quantityOnHand }})
-                        </option>
-                      }
-                    </select>
-                  </label>
-
-                  <label class="field">
-                    <span>Quantity</span>
-                    <input type="number" min="1" class="input" [(ngModel)]="quickBill.quantity" (change)="recalcModalTotal()" />
-                  </label>
-                </div>
-
-                <div class="grid two" style="margin-top: 10px;">
-                  <label class="field">
-                    <span>Device IMEI / Serial Number (Optional)</span>
-                    <input type="text" class="input" [(ngModel)]="quickBill.imeiNumber" placeholder="e.g. 356789123456789" />
-                  </label>
-
-                  <label class="field">
-                    <span>Payment Mode</span>
-                    <select class="input" [(ngModel)]="quickBill.paymentMethod">
-                      <option value="Cash">Cash Counter</option>
-                      <option value="UPI (GPay / PhonePe / Paytm)">UPI (GPay / PhonePe / Paytm)</option>
-                      <option value="Credit / Debit Card">Credit / Debit Card</option>
-                    </select>
-                  </label>
-                </div>
-              </div>
-
-              <!-- Promo Code & Discount Section -->
-              <div class="form-section">
-                <div class="section-title">3. Promotional Discount (Optional)</div>
-                @if (quickBill.appliedPromo) {
-                  <div class="modal-applied-promo">
-                    <div>
-                      <strong>✓ Coupon {{ quickBill.appliedPromo.code }} Applied!</strong>
-                      <span class="disc-sub">Deduction: -₹{{ quickModalDiscount() | number:'1.2-2' }}</span>
-                    </div>
-                    <button type="button" class="btn-clear-promo" (click)="removeModalPromo()">✕ Remove</button>
-                  </div>
-                } @else {
-                  <div class="promo-apply-row">
-                    <input
-                      type="text"
-                      class="input"
-                      [(ngModel)]="quickBill.promoCode"
-                      placeholder="e.g. DIWALI2026, SAVE10, FLAT500"
-                      style="text-transform: uppercase;"
-                      (keyup.enter)="applyModalPromo()"
-                    />
-                    <button
-                      type="button"
-                      class="btn-apply-code"
-                      [disabled]="validatingModalPromo || !quickBill.promoCode.trim()"
-                      (click)="applyModalPromo()"
-                    >
-                      {{ validatingModalPromo ? 'Checking...' : 'Apply Code' }}
-                    </button>
-                  </div>
-                  @if (modalPromoError) {
-                    <div class="modal-promo-err">{{ modalPromoError }}</div>
-                  }
-                  <div class="modal-quick-chips">
-                    <span class="chips-lbl">Quick Deals:</span>
-                    <button type="button" class="m-chip" (click)="setModalPromo('DIWALI2026')">DIWALI2026 (-₹2500)</button>
-                    <button type="button" class="m-chip" (click)="setModalPromo('SAVE10')">SAVE10 (10% OFF)</button>
-                    <button type="button" class="m-chip" (click)="setModalPromo('FLAT500')">FLAT500 (-₹500)</button>
-                    <button type="button" class="m-chip" (click)="setModalPromo('SUPERDEAL')">SUPERDEAL (-₹1000)</button>
-                  </div>
-                }
-              </div>
-
-              <!-- Price & Tax Calculation Summary -->
-              <div class="calc-box">
-                <div class="calc-row">
-                  <span>Selected Item:</span>
-                  <strong>{{ quickBill.selectedProductName || 'None selected' }}</strong>
-                </div>
-                <div class="calc-row">
-                  <span>Gross Subtotal:</span>
-                  <span>{{ quickBill.quantity }} × ₹{{ quickBill.unitPrice | number:'1.2-2' }} = <strong>₹{{ quickModalSubtotal() | number:'1.2-2' }}</strong></span>
-                </div>
-                @if (quickModalDiscount() > 0) {
-                  <div class="calc-row disc-calc">
-                    <span>Discount ({{ quickBill.appliedPromo?.code || 'Special' }}):</span>
-                    <strong>-₹{{ quickModalDiscount() | number:'1.2-2' }}</strong>
-                  </div>
-                }
-                <div class="calc-row taxable-calc">
-                  <span>Net Taxable Value:</span>
-                  <strong>₹{{ quickModalTaxable() | number:'1.2-2' }}</strong>
-                </div>
-                <div class="calc-row">
-                  <span>Central GST (CGST &#64; 9.0%):</span>
-                  <span>+₹{{ quickModalCgst() | number:'1.2-2' }}</span>
-                </div>
-                <div class="calc-row">
-                  <span>State GST (SGST &#64; 9.0%):</span>
-                  <span>+₹{{ quickModalSgst() | number:'1.2-2' }}</span>
-                </div>
-                <div class="calc-row total-row">
-                  <span>Total Amount Payable:</span>
-                  <strong class="total-big">₹{{ quickModalTotal() | number:'1.2-2' }}</strong>
-                </div>
-              </div>
-            </div>
-
-            <div class="modal-footer">
-              <button class="btn secondary" (click)="closeQuickBillModal()">Cancel</button>
-              <div class="modal-print-actions">
-                <button
-                  type="button"
-                  class="btn-format pos-80mm-btn"
-                  [disabled]="submittingQuickBill || !quickBill.productId"
-                  (click)="submitQuickBill('80mm')"
-                >
-                  {{ submittingQuickBill ? 'Processing...' : '🧾 Save & Print 80mm Slip' }}
-                </button>
-                <button
-                  type="button"
-                  class="btn-format a4-btn"
-                  [disabled]="submittingQuickBill || !quickBill.productId"
-                  (click)="submitQuickBill('a4')"
-                >
-                  {{ submittingQuickBill ? 'Processing...' : '📄 Save & Print A4 Invoice' }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      }
     </div>
   `,
   styles: [`
@@ -1088,7 +1080,15 @@ export class BillingComponent implements OnInit {
     });
   }
 
-  // Quick POS Modal Actions
+  // Quick POS Actions
+  toggleQuickBill(): void {
+    if (this.showQuickBillModal) {
+      this.closeQuickBillModal();
+    } else {
+      this.openQuickBillModal();
+    }
+  }
+
   openQuickBillModal(): void {
     this.modalError = '';
     this.modalPromoError = '';
@@ -1097,6 +1097,7 @@ export class BillingComponent implements OnInit {
       this.quickBill.productId = this.products[0].id;
       this.onProductSelected();
     }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   closeQuickBillModal(): void {

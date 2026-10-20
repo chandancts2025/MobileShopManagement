@@ -33,7 +33,14 @@ interface PurchaseOrderLineDraft {
         </h2>
         <p>Issue purchase orders to device distributors, receive shipments into inventory, and track vendor lines.</p>
       </div>
-      <a class="btn" routerLink="/admin/suppliers">🏢 Supplier Master</a>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        @if (auth.hasAnyRole(['SuperAdmin', 'Admin'])) {
+          <button class="btn primary" type="button" (click)="toggleCreatePo()">
+            {{ createOpen ? '✕ Close PO Form' : '📋 + Create Purchase Order' }}
+          </button>
+        }
+        <a class="btn ghost" routerLink="/admin/suppliers">🏢 Supplier Master</a>
+      </div>
     </div>
 
     @if (error) {
@@ -43,17 +50,18 @@ interface PurchaseOrderLineDraft {
       <div class="message success" style="margin-bottom: 14px;">{{ success }}</div>
     }
 
-    <section class="grid two">
-      @if (auth.hasAnyRole(['SuperAdmin', 'Admin'])) {
-        <div class="panel panel-accent" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);">
-          <div class="panel-header" style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
-            <div>
-              <strong style="font-size: 1rem; color: #0f172a;">📋 Create Purchase Order</strong>
-              <p style="margin: 2px 0 0; font-size: 0.78rem; color: #64748b;">Order fresh handset stock from authorized distributors</p>
-            </div>
-            <span class="badge good">+ New PO</span>
+    <!-- Top-Expandable Create PO Form -->
+    @if (createOpen && auth.hasAnyRole(['SuperAdmin', 'Admin'])) {
+      <section class="top-form-card">
+        <div class="top-form-header">
+          <div class="top-form-title">
+            <span class="badge good">+ NEW PO</span>
+            <h3>📋 Create Purchase Order to Distributor</h3>
           </div>
-          <div class="panel-body grid" style="padding: 20px;">
+          <button class="btn ghost" type="button" (click)="createOpen = false" title="Collapse form">✕ Close</button>
+        </div>
+        <div class="top-form-body">
+          <div class="grid two">
             <label class="field">
               <span>Distributor / Supplier <span class="required-star">*</span></span>
               <select class="select" name="supplierId" [(ngModel)]="createModel.supplierId">
@@ -67,159 +75,155 @@ interface PurchaseOrderLineDraft {
               <span>Expected Delivery Date</span>
               <input class="input" type="datetime-local" name="expectedAtUtc" [(ngModel)]="createModel.expectedAtUtc">
             </label>
-            <label class="field">
-              <span>Purchase Order Notes</span>
-              <textarea class="textarea" name="notes" [(ngModel)]="createModel.notes" placeholder="e.g. Bulk handset discount applicable / payment terms 30 days net"></textarea>
-            </label>
+          </div>
+          <label class="field" style="margin-top: 10px;">
+            <span>Purchase Order Notes</span>
+            <textarea class="textarea" rows="2" name="notes" [(ngModel)]="createModel.notes" placeholder="e.g. Bulk handset discount applicable / payment terms 30 days net"></textarea>
+          </label>
 
-            <!-- Line Items Builder Sub-card -->
-            <div style="border: 1.5px solid #cbd5e1; border-radius: 8px; background: #f8fafc; padding: 14px; margin-top: 6px;">
-              <strong style="display: block; font-size: 0.88rem; color: #0f172a; margin-bottom: 10px;">📦 Add Line Item</strong>
-              <div class="grid">
+          <!-- Line Items Builder Sub-card -->
+          <div style="border: 1.5px solid #cbd5e1; border-radius: 8px; background: #f8fafc; padding: 14px; margin-top: 12px;">
+            <strong style="display: block; font-size: 0.88rem; color: #0f172a; margin-bottom: 10px;">📦 Add PO Line Item</strong>
+            <div class="grid">
+              <label class="field">
+                <span>Product Model / SKU <span class="required-star">*</span></span>
+                <select class="select" name="lineProductId" [(ngModel)]="lineDraft.productId">
+                  <option value="">-- Select product to add --</option>
+                  @for (product of products; track product.id) {
+                    <option [value]="product.id">{{ product.name }} (SKU: {{ product.sku }})</option>
+                  }
+                </select>
+              </label>
+              <div class="grid three" style="margin-top: 8px;">
                 <label class="field">
-                  <span>Product Model / SKU</span>
-                  <select class="select" name="lineProductId" [(ngModel)]="lineDraft.productId">
-                    <option value="">-- Select product to add --</option>
-                    @for (product of products; track product.id) {
-                      <option [value]="product.id">{{ product.name }} (SKU: {{ product.sku }})</option>
-                    }
-                  </select>
+                  <span>Quantity</span>
+                  <input class="input" type="number" min="1" name="quantityOrdered" [(ngModel)]="lineDraft.quantityOrdered">
                 </label>
-                <div class="grid three">
-                  <label class="field">
-                    <span>Quantity</span>
-                    <input class="input" type="number" min="1" name="quantityOrdered" [(ngModel)]="lineDraft.quantityOrdered">
-                  </label>
-                  <label class="field">
-                    <span>Unit Cost (₹)</span>
-                    <input class="input" type="number" min="0" step="0.01" name="unitCost" [(ngModel)]="lineDraft.unitCost" placeholder="0.00">
-                  </label>
-                  <label class="field">
-                    <span>Tax %</span>
-                    <input class="input" type="number" min="0" max="100" step="0.01" name="taxPercentage" [(ngModel)]="lineDraft.taxPercentage">
-                  </label>
-                </div>
-                <button class="btn ghost" type="button" (click)="addLine()" [disabled]="!lineDraft.productId || lineDraft.quantityOrdered < 1" style="background: #ffffff;">
+                <label class="field">
+                  <span>Unit Cost (₹)</span>
+                  <input class="input" type="number" min="0" step="0.01" name="unitCost" [(ngModel)]="lineDraft.unitCost" placeholder="0.00">
+                </label>
+                <label class="field">
+                  <span>Tax %</span>
+                  <input class="input" type="number" min="0" max="100" step="0.01" name="taxPercentage" [(ngModel)]="lineDraft.taxPercentage">
+                </label>
+              </div>
+              <div style="display: flex; justify-content: flex-end; margin-top: 8px;">
+                <button class="btn ghost" type="button" (click)="addLine()" [disabled]="!lineDraft.productId || lineDraft.quantityOrdered < 1" style="background: #ffffff; border-color: #cbd5e1;">
                   + Add Item Line
                 </button>
               </div>
             </div>
+          </div>
 
-            @if (createModel.items.length > 0) {
-              <div class="table-wrap" style="margin-top: 10px;">
-                <table>
-                  <thead>
+          @if (createModel.items.length > 0) {
+            <div class="table-wrap" style="margin-top: 12px;">
+              <table style="width: 100%;">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Qty</th>
+                    <th>Unit Cost</th>
+                    <th>Tax</th>
+                    <th style="text-align: right;">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (line of createModel.items; track line.productId) {
                     <tr>
-                      <th>Product</th>
-                      <th>Qty</th>
-                      <th>Unit Cost</th>
-                      <th>Tax</th>
-                      <th></th>
+                      <td><strong>{{ line.productName }}</strong></td>
+                      <td>{{ line.quantityOrdered }}</td>
+                      <td>{{ money(line.unitCost) }}</td>
+                      <td>{{ line.taxPercentage }}%</td>
+                      <td style="text-align: right;">
+                        <button class="btn danger" type="button" (click)="removeLine(line.productId)" style="padding: 2px 8px; font-size: 0.75rem;">✕</button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    @for (line of createModel.items; track line.productId) {
-                      <tr>
-                        <td><strong>{{ line.productName }}</strong></td>
-                        <td>{{ line.quantityOrdered }}</td>
-                        <td>{{ money(line.unitCost) }}</td>
-                        <td>{{ line.taxPercentage }}%</td>
-                        <td><button class="btn danger" type="button" (click)="removeLine(line.productId)" style="padding: 2px 8px; font-size: 0.75rem;">✕</button></td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-            }
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
 
-            <button class="btn primary" type="button" (click)="createPurchaseOrder()" [disabled]="!createModel.supplierId || createModel.items.length === 0" style="margin-top: 10px;">
+          <div class="top-form-footer">
+            <button class="btn ghost" type="button" (click)="createOpen = false">Cancel</button>
+            <button class="btn primary" type="button" (click)="createPurchaseOrder()" [disabled]="!createModel.supplierId || createModel.items.length === 0">
               ✓ Issue Purchase Order
             </button>
           </div>
         </div>
-      }
+      </section>
+    }
 
-      <div class="panel panel-accent" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);">
-        <div class="panel-header" style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
-          <div>
-            <strong style="font-size: 1rem; color: #0f172a;">🔍 Selected PO Inspector</strong>
-            @if (selected) {
-              <p style="margin: 2px 0 0; font-size: 0.78rem; color: #64748b;">Review PO lines and acknowledge inward shipment</p>
-            }
+    <!-- Top-Expandable Selected PO Inspector -->
+    @if (selected) {
+      <section class="top-form-card">
+        <div class="top-form-header">
+          <div class="top-form-title">
+            <span class="badge" [class]="poStatusClass(selected.status)">
+              {{ enumLabel(purchaseOrderStatusOptions, selected.status) }}
+            </span>
+            <h3>🔍 Purchase Order #{{ selected.purchaseOrderNumber }}</h3>
           </div>
-          @if (selected) {
-            <button class="btn ghost" type="button" (click)="selected = null" style="padding: 4px 10px; font-size: 0.82rem;">✕ Close</button>
-          }
+          <button class="btn ghost" type="button" (click)="selected = null" title="Close inspector">✕ Close Inspector</button>
         </div>
-        <div class="panel-body" style="padding: 20px;">
-          @if (selected) {
-            <div class="grid">
-              <div class="grid two" style="background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                <div>
-                  <span style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">PO Number</span>
-                  <div style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin-top: 2px;">{{ selected.purchaseOrderNumber }}</div>
-                </div>
-                <div>
-                  <span style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Status</span>
-                  <div style="margin-top: 2px;">
-                    <span class="badge" [class]="poStatusClass(selected.status)">
-                      {{ enumLabel(purchaseOrderStatusOptions, selected.status) }}
-                    </span>
-                  </div>
-                </div>
-                <div style="margin-top: 8px;">
-                  <span style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Distributor</span>
-                  <div style="font-weight: 700; color: #0f172a;">{{ selected.supplierName }}</div>
-                </div>
-                <div style="margin-top: 8px;">
-                  <span style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Total Valuation</span>
-                  <div class="cell-price" style="font-size: 1.15rem; color: #0d7a5f;">{{ money(selected.totalAmount) }}</div>
-                </div>
-              </div>
+        <div class="top-form-body">
+          <div class="grid four" style="background: #f8fafc; padding: 14px 18px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 14px;">
+            <div>
+              <span style="font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Distributor</span>
+              <div style="font-weight: 700; color: #0f172a; margin-top: 2px;">{{ selected.supplierName }}</div>
+            </div>
+            <div>
+              <span style="font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Expected At</span>
+              <div style="font-size: 0.9rem; color: #334155; margin-top: 2px;">{{ dateTime(selected.expectedAtUtc) }}</div>
+            </div>
+            <div>
+              <span style="font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Total Valuation</span>
+              <div class="cell-price" style="font-size: 1.15rem; color: #0d7a5f; margin-top: 2px;">{{ money(selected.totalAmount) }}</div>
+            </div>
+            <div>
+              <span style="font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Notes</span>
+              <div style="font-size: 0.85rem; color: #64748b; margin-top: 2px;">{{ selected.notes || 'No notes' }}</div>
+            </div>
+          </div>
 
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Product</th>
-                      <th>Ordered</th>
-                      <th>Received</th>
-                      <th>Receive Now</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (item of selected.items; track item.productId) {
-                      <tr>
-                        <td><strong>{{ item.productName }}</strong></td>
-                        <td>{{ item.quantityOrdered }}</td>
-                        <td style="color: #16a34a; font-weight: 700;">{{ item.quantityReceived }}</td>
-                        <td>
-                          <input class="input" type="number" min="0" style="width: 100px; min-height: 32px; padding: 4px 8px;" [name]="'recv' + item.productId" [(ngModel)]="receiveQuantities[item.productId]">
-                        </td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-
-              <div style="display: flex; gap: 10px; margin-top: 10px; justify-content: flex-end;">
-                <button class="btn primary" type="button" (click)="receiveSelected()">✓ Receive Quantities</button>
-                @if (auth.hasAnyRole(['SuperAdmin', 'Admin'])) {
-                  <button class="btn danger" type="button" (click)="cancelSelected()">Cancel PO</button>
+          <div class="table-wrap">
+            <table style="width: 100%;">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Ordered</th>
+                  <th>Received</th>
+                  <th style="min-width: 140px;">Receive Now</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of selected.items; track item.productId) {
+                  <tr>
+                    <td><strong>{{ item.productName }}</strong></td>
+                    <td>{{ item.quantityOrdered }}</td>
+                    <td style="color: #16a34a; font-weight: 700;">{{ item.quantityReceived }}</td>
+                    <td>
+                      <input class="input" type="number" min="0" style="max-width: 110px; min-height: 32px; padding: 4px 8px;" [name]="'recv' + item.productId" [(ngModel)]="receiveQuantities[item.productId]">
+                    </td>
+                  </tr>
                 }
-              </div>
-            </div>
-          } @else {
-            <div style="text-align: center; padding: 36px 14px; color: #64748b;">
-              <div style="font-size: 2.2rem; margin-bottom: 8px;">📑</div>
-              <strong style="color: #1e293b; display: block; margin-bottom: 4px;">No Purchase Order Selected</strong>
-              <p style="font-size: 0.88rem; margin: 0;">Click "Details" on any purchase order in the table below to inspect items or receive goods.</p>
-            </div>
-          }
-        </div>
-      </div>
-    </section>
+              </tbody>
+            </table>
+          </div>
 
+          <div class="top-form-footer">
+            @if (auth.hasAnyRole(['SuperAdmin', 'Admin']) && selected.status !== 4 && selected.status !== 5) {
+              <button class="btn danger" type="button" (click)="cancelSelected()">Cancel PO</button>
+            }
+            <button class="btn ghost" type="button" (click)="selected = null">Close</button>
+            <button class="btn primary" type="button" (click)="receiveSelected()">✓ Receive Quantities</button>
+          </div>
+        </div>
+      </section>
+    }
+
+    <!-- Full-Width Purchase Orders List Table -->
     <section class="panel" style="margin-top: 20px;" [class.loading]="loading">
       <div class="panel-header toolbar">
         <div class="toolbar-left" style="flex: 1;">
@@ -232,7 +236,7 @@ interface PurchaseOrderLineDraft {
         <button class="btn ghost" type="button" (click)="loadOrders()">🔄 Refresh</button>
       </div>
       <div class="table-wrap">
-        <table>
+        <table style="width: 100%;">
           <thead>
             <tr>
               <th>PO #</th>
@@ -240,7 +244,7 @@ interface PurchaseOrderLineDraft {
               <th>Status</th>
               <th>Total Amount</th>
               <th>Expected At</th>
-              <th style="text-align: right; min-width: 110px;">Action</th>
+              <th class="actions">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -261,7 +265,7 @@ interface PurchaseOrderLineDraft {
                   <strong class="cell-price">{{ money(order.totalAmount) }}</strong>
                 </td>
                 <td style="font-size: 0.84rem; color: #475569;">{{ dateTime(order.expectedAtUtc) }}</td>
-                <td style="text-align: right;">
+                <td class="actions">
                   <button class="btn ghost" type="button" (click)="loadDetails(order.id)">Inspect 🔍</button>
                 </td>
               </tr>
@@ -287,6 +291,7 @@ export class PurchasingComponent implements OnInit {
   products: ProductDto[] = [];
   purchaseOrders: PurchaseOrderDto[] = [];
   selected: PurchaseOrderDto | null = null;
+  createOpen = false;
   receiveQuantities: Record<string, number> = {};
   query = { search: '', pageNumber: 1, pageSize: 20 };
   createModel = {
@@ -329,6 +334,14 @@ export class PurchasingComponent implements OnInit {
     this.loadOrders();
   }
 
+  toggleCreatePo(): void {
+    this.createOpen = !this.createOpen;
+    if (this.createOpen) {
+      this.selected = null;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
   loadMasters(): void {
     this.api.list<SupplierDto>('/api/suppliers', { pageNumber: 1, pageSize: 100 }).subscribe({
       next: (result) => this.suppliers = result.items,
@@ -354,10 +367,12 @@ export class PurchasingComponent implements OnInit {
 
   loadDetails(id: string): void {
     this.error = '';
+    this.createOpen = false;
     this.api.get<PurchaseOrderDto>(`/api/purchaseorders/${id}`).subscribe({
       next: (order) => {
         this.selected = order;
         this.receiveQuantities = Object.fromEntries(order.items.map((item) => [item.productId, Math.max(0, item.quantityOrdered - item.quantityReceived)]));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       },
       error: (error) => this.error = apiErrorMessage(error)
     });
@@ -407,6 +422,7 @@ export class PurchasingComponent implements OnInit {
       next: (order) => {
         this.success = `Purchase order ${order.purchaseOrderNumber} created.`;
         this.createModel = { supplierId: '', expectedAtUtc: '', notes: '', items: [] };
+        this.createOpen = false;
         this.loadOrders();
       },
       error: (error) => this.error = apiErrorMessage(error)

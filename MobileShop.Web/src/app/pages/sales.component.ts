@@ -28,7 +28,15 @@ import { dateTime, enumLabel, money } from '../core/formatters';
         </h2>
         <p>Order fulfillment, payment recording, thermal receipt reprints, and return settlements.</p>
       </div>
-      <a class="btn primary" routerLink="/cart">🛒 + New Sale from Cart</a>
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <button class="btn" type="button" (click)="toggleTopForm('payment')">
+          {{ activeTopForm === 'payment' ? '✕ Close Payment' : '💳 + Record Payment' }}
+        </button>
+        <button class="btn" type="button" (click)="toggleTopForm('return')">
+          {{ activeTopForm === 'return' ? '✕ Close Return' : '↩️ Customer Return' }}
+        </button>
+        <a class="btn primary" routerLink="/cart">🛒 + New Sale from Cart</a>
+      </div>
     </div>
 
     @if (error) {
@@ -38,6 +46,106 @@ import { dateTime, enumLabel, money } from '../core/formatters';
       <div class="message success" style="margin-bottom: 14px;">{{ success }}</div>
     }
 
+    <!-- Top-Expandable Record Payment Form -->
+    @if (activeTopForm === 'payment') {
+      <section class="top-form-card">
+        <div class="top-form-header">
+          <div class="top-form-title">
+            <span class="badge good">+ PAYMENT SETTLEMENT</span>
+            <h3>💳 Record Order Payment</h3>
+          </div>
+          <button class="btn ghost" type="button" (click)="closeTopForm()" title="Collapse form">✕ Close</button>
+        </div>
+        <div class="top-form-body">
+          <div class="grid two">
+            <label class="field">
+              <span>Select Target Order <span class="required-star">*</span></span>
+              <select class="select" name="paymentOrderId" [(ngModel)]="paymentModel.orderId" required>
+                <option [ngValue]="''">-- Select order to settle --</option>
+                @for (order of orders; track order.id) {
+                  <option [ngValue]="order.id">#{{ order.orderNumber }} — {{ order.customerName || 'Counter sale' }} (Total: {{ money(order.totalAmount) }} | Due: {{ money(order.balanceAmount) }})</option>
+                }
+              </select>
+            </label>
+            <label class="field">
+              <span>Payment Amount (₹) <span class="required-star">*</span></span>
+              <input class="input" type="number" min="0.01" step="0.01" name="paymentAmount" [(ngModel)]="paymentModel.amount" placeholder="0.00" required>
+            </label>
+          </div>
+          <div class="grid three" style="margin-top: 10px;">
+            <label class="field">
+              <span>Payment Method <span class="required-star">*</span></span>
+              <select class="select" name="paymentMethod" [(ngModel)]="paymentModel.paymentMethod">
+                <option value="Cash">Cash</option>
+                <option value="Card">Credit / Debit Card</option>
+                <option value="UPI">UPI / QR Code</option>
+                <option value="Other">Bank Transfer / Other</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Payment Status</span>
+              <select class="select" name="paymentStatus" [(ngModel)]="paymentModel.status">
+                @for (status of paymentStatusOptions; track status.value) {
+                  <option [ngValue]="status.value">{{ status.label }}</option>
+                }
+              </select>
+            </label>
+            <label class="field">
+              <span>Reference / UTR #</span>
+              <input class="input" name="transactionReference" [(ngModel)]="paymentModel.transactionReference" placeholder="e.g. UPI-1234567890">
+            </label>
+          </div>
+          <div class="top-form-footer">
+            <button class="btn ghost" type="button" (click)="closeTopForm()">Cancel</button>
+            <button class="btn primary" type="button" (click)="createPayment()" [disabled]="!paymentModel.orderId || paymentModel.amount <= 0">
+              ✓ Save Payment Record
+            </button>
+          </div>
+        </div>
+      </section>
+    }
+
+    <!-- Top-Expandable Customer Return Form -->
+    @if (activeTopForm === 'return') {
+      <section class="top-form-card">
+        <div class="top-form-header">
+          <div class="top-form-title">
+            <span class="badge warn">RETURN & REFUND</span>
+            <h3>↩️ Process Customer Return</h3>
+          </div>
+          <button class="btn ghost" type="button" (click)="closeTopForm()" title="Collapse form">✕ Close</button>
+        </div>
+        <div class="top-form-body">
+          <div class="grid two">
+            <label class="field">
+              <span>Select Order / Order ID <span class="required-star">*</span></span>
+              <select class="select" name="returnOrderId" [(ngModel)]="returnModel.orderId">
+                <option [ngValue]="''">-- Select order for return --</option>
+                @for (order of orders; track order.id) {
+                  <option [ngValue]="order.id">#{{ order.orderNumber }} — {{ order.customerName || 'Counter sale' }} (Total: {{ money(order.totalAmount) }})</option>
+                }
+              </select>
+            </label>
+            <label class="field">
+              <span>Refund Amount (₹) <span class="required-star">*</span></span>
+              <input class="input" type="number" min="0" step="0.01" name="refundAmount" [(ngModel)]="returnModel.refundAmount" placeholder="0.00">
+            </label>
+          </div>
+          <label class="field" style="margin-top: 10px;">
+            <span>Return Reason & Inspection Notes <span class="required-star">*</span></span>
+            <textarea class="textarea" rows="2" name="returnReason" [(ngModel)]="returnModel.reason" placeholder="e.g. Unopened box / sealed handset returned within policy window"></textarea>
+          </label>
+          <div class="top-form-footer">
+            <button class="btn ghost" type="button" (click)="closeTopForm()">Cancel</button>
+            <button class="btn primary" type="button" (click)="createReturn()" [disabled]="!returnModel.orderId">
+              Submit Return Request
+            </button>
+          </div>
+        </div>
+      </section>
+    }
+
+    <!-- Full-Width Orders List Table -->
     <section class="panel" [class.loading]="loading">
       <div class="panel-header toolbar">
         <div class="toolbar-left" style="flex: 1;">
@@ -50,7 +158,7 @@ import { dateTime, enumLabel, money } from '../core/formatters';
         <button class="btn ghost" type="button" (click)="loadOrders()">🔄 Refresh</button>
       </div>
       <div class="table-wrap">
-        <table>
+        <table style="width: 100%;">
           <thead>
             <tr>
               <th>Order #</th>
@@ -60,12 +168,12 @@ import { dateTime, enumLabel, money } from '../core/formatters';
               <th>Balance Due</th>
               <th>Status</th>
               <th>Date Created</th>
-              <th style="min-width: 170px;">Status & Print</th>
+              <th class="actions">Actions & Print</th>
             </tr>
           </thead>
           <tbody>
             @for (order of orders; track order.id) {
-              <tr>
+              <tr [class.active-row]="(paymentModel.orderId === order.id && activeTopForm === 'payment') || (returnModel.orderId === order.id && activeTopForm === 'return')">
                 <td>
                   <span class="code-pill">#{{ order.orderNumber }}</span>
                 </td>
@@ -89,18 +197,14 @@ import { dateTime, enumLabel, money } from '../core/formatters';
                   </span>
                 </td>
                 <td style="font-size: 0.84rem; color: #475569;">{{ dateTime(order.createdAtUtc) }}</td>
-                <td>
-                  <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-                    <select class="select" style="min-width: 130px; min-height: 32px; padding: 4px 8px; font-size: 0.8rem;" [name]="'status' + order.id" [(ngModel)]="orderStatusDrafts[order.id]">
-                      @for (status of orderStatusOptions; track status.value) {
-                        <option [ngValue]="status.value">{{ status.label }}</option>
-                      }
-                    </select>
-                    <button class="btn ghost" type="button" style="padding: 4px 8px; font-size: 0.78rem;" (click)="updateOrderStatus(order)" title="Save status update">Save</button>
-                  </div>
-                  <div style="display:flex; gap:6px; margin-top:6px; flex-wrap: wrap;">
+                <td class="actions">
+                  <div style="display: inline-flex; gap: 4px; align-items: center; justify-content: flex-end; flex-wrap: wrap;">
                     <button class="btn" type="button" style="padding: 4px 8px; font-size: 0.78rem;" (click)="printOrder(order, 'a4')" title="Print Standard A4 Tax Invoice">📄 A4</button>
                     <button class="btn ghost" type="button" style="padding: 4px 8px; font-size: 0.78rem; background: #e0f2fe; color: #0369a1; border-color: #bae6fd;" (click)="printOrder(order, '80mm')" title="Print 80mm POS Thermal Slip">🧾 80mm</button>
+                    @if (order.balanceAmount > 0) {
+                      <button class="btn ghost" type="button" style="padding: 4px 8px; font-size: 0.78rem; color: #0d7a5f; border-color: #a7f3d0; background: #ecfdf5;" (click)="openPaymentForOrder(order)" title="Record payment settlement">💳 Settle</button>
+                    }
+                    <button class="btn ghost" type="button" style="padding: 4px 8px; font-size: 0.78rem;" (click)="openReturnForOrder(order)" title="Process return">↩️</button>
                   </div>
                 </td>
               </tr>
@@ -119,90 +223,6 @@ import { dateTime, enumLabel, money } from '../core/formatters';
         </table>
       </div>
     </section>
-
-    <section class="grid two" style="margin-top: 16px;">
-      <div class="panel panel-accent" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);">
-        <div class="panel-header" style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
-          <div>
-            <strong style="font-size: 1rem; color: #0f172a;">💳 Record Payment</strong>
-            <p style="margin: 2px 0 0; font-size: 0.78rem; color: #64748b;">Capture cash, UPI, or card settlements against active orders</p>
-          </div>
-          <button class="btn ghost" type="button" (click)="loadPayments()">Refresh</button>
-        </div>
-        <div class="panel-body grid" style="padding: 20px;">
-          <label class="field">
-            <span>Select Target Order <span class="required-star">*</span></span>
-            <select class="select" name="paymentOrderId" [(ngModel)]="paymentModel.orderId" required>
-              <option [ngValue]="''">-- Select order --</option>
-              @for (order of orders; track order.id) {
-                <option [ngValue]="order.id">{{ order.orderNumber }} — {{ order.customerName || 'Counter sale' }} (Total: {{ money(order.totalAmount) }})</option>
-              }
-            </select>
-          </label>
-          <div class="grid two">
-            <label class="field">
-              <span>Amount (₹) <span class="required-star">*</span></span>
-              <input class="input" type="number" min="0.01" step="0.01" name="paymentAmount" [(ngModel)]="paymentModel.amount" placeholder="0.00" required>
-            </label>
-            <label class="field">
-              <span>Payment Status</span>
-              <select class="select" name="paymentStatus" [(ngModel)]="paymentModel.status">
-                @for (status of paymentStatusOptions; track status.value) {
-                  <option [ngValue]="status.value">{{ status.label }}</option>
-                }
-              </select>
-            </label>
-          </div>
-          <div class="grid two">
-            <label class="field">
-              <span>Payment Method <span class="required-star">*</span></span>
-              <select class="select" name="paymentMethod" [(ngModel)]="paymentModel.paymentMethod">
-                <option value="Cash">Cash</option>
-                <option value="Card">Credit / Debit Card</option>
-                <option value="UPI">UPI / QR Code</option>
-                <option value="Other">Bank Transfer / Other</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Reference / UTR #</span>
-              <input class="input" name="transactionReference" [(ngModel)]="paymentModel.transactionReference" placeholder="e.g. UPI-1234567890">
-            </label>
-          </div>
-          <button class="btn primary" type="button" (click)="createPayment()" [disabled]="!paymentModel.orderId || paymentModel.amount <= 0" style="margin-top: 6px;">
-            ✓ Save Payment Record
-          </button>
-        </div>
-      </div>
-
-      <div class="panel panel-accent" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);">
-        <div class="panel-header" style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
-          <div>
-            <strong style="font-size: 1rem; color: #0f172a;">↩️ Customer Returns</strong>
-            <p style="margin: 2px 0 0; font-size: 0.78rem; color: #64748b;">Process item returns and authorize refunds</p>
-          </div>
-          <button class="btn ghost" type="button" (click)="loadReturns()">Refresh</button>
-        </div>
-        <div class="panel-body grid" style="padding: 20px;">
-          <div class="grid two">
-            <label class="field">
-              <span>Order ID / Number <span class="required-star">*</span></span>
-              <input class="input" name="returnOrderId" [(ngModel)]="returnModel.orderId" placeholder="Order ID or GUID">
-            </label>
-            <label class="field">
-              <span>Refund Amount (₹) <span class="required-star">*</span></span>
-              <input class="input" type="number" min="0" step="0.01" name="refundAmount" [(ngModel)]="returnModel.refundAmount" placeholder="0.00">
-            </label>
-          </div>
-          <label class="field">
-            <span>Return Reason & Inspection Notes <span class="required-star">*</span></span>
-            <textarea class="textarea" name="returnReason" [(ngModel)]="returnModel.reason" placeholder="e.g. Unopened box / sealed handset returned within policy window"></textarea>
-          </label>
-          <button class="btn primary" type="button" (click)="createReturn()" [disabled]="!returnModel.orderId" style="margin-top: 6px;">
-            Submit Return Request
-          </button>
-        </div>
-      </div>
-    </section>
   `
 })
 export class SalesComponent implements OnInit {
@@ -211,6 +231,7 @@ export class SalesComponent implements OnInit {
   returns: ReturnRequestDto[] = [];
   invoice: InvoiceDto | null = null;
   invoiceOrderId = '';
+  activeTopForm: 'payment' | 'return' | null = null;
   orderStatusDrafts: Record<string, number> = {};
   returnStatusDrafts: Record<string, number> = {};
   orderQuery = { search: '', pageNumber: 1, pageSize: 20 };
@@ -247,6 +268,33 @@ export class SalesComponent implements OnInit {
   }
 
   constructor(private readonly api: ApiService) {}
+
+  toggleTopForm(form: 'payment' | 'return'): void {
+    if (this.activeTopForm === form) {
+      this.closeTopForm();
+    } else {
+      this.activeTopForm = form;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  closeTopForm(): void {
+    this.activeTopForm = null;
+  }
+
+  openPaymentForOrder(order: OrderDto): void {
+    this.paymentModel.orderId = order.id;
+    this.paymentModel.amount = order.balanceAmount > 0 ? order.balanceAmount : order.totalAmount;
+    this.activeTopForm = 'payment';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  openReturnForOrder(order: OrderDto): void {
+    this.returnModel.orderId = order.id;
+    this.returnModel.refundAmount = order.paidAmount > 0 ? order.paidAmount : order.totalAmount;
+    this.activeTopForm = 'return';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
   ngOnInit(): void {
     this.loadOrders();
@@ -321,6 +369,7 @@ export class SalesComponent implements OnInit {
       next: (payment) => {
         this.success = `Payment ${payment.id} recorded.`;
         this.paymentModel = { orderId: '', amount: 0, paymentMethod: 'Cash', status: 3, transactionReference: '' };
+        this.closeTopForm();
         this.loadPayments();
         this.loadOrders();
       },
@@ -349,6 +398,7 @@ export class SalesComponent implements OnInit {
       next: () => {
         this.success = 'Return request created.';
         this.returnModel = { orderId: '', reason: '', refundAmount: 0 };
+        this.closeTopForm();
         this.loadReturns();
       },
       error: (error) => this.error = apiErrorMessage(error)

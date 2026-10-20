@@ -33,8 +33,14 @@ const stockTransactionLabels: Record<number, string> = {
           <p>Real-time handset tracking, inventory valuation at cost vs retail, reorder triggers, and quick stock-in.</p>
         </div>
         <div class="header-actions">
-          <button class="btn" type="button" (click)="exportInventoryCsv()">📥 Export Inventory CSV</button>
-          <a class="btn primary" routerLink="/admin/products">📦 Product Master</a>
+          <button class="btn primary" type="button" (click)="toggleTopForm('inward')">
+            {{ activeTopForm === 'inward' ? '✕ Close Inward' : '📥 + Fast Inward Stock' }}
+          </button>
+          <button class="btn" type="button" (click)="toggleTopForm('adjust')">
+            {{ activeTopForm === 'adjust' ? '✕ Close Adjust' : '⚖️ Stock Adjustment' }}
+          </button>
+          <button class="btn ghost" type="button" (click)="exportInventoryCsv()">📥 Export CSV</button>
+          <a class="btn ghost" routerLink="/admin/products">📦 Product Master</a>
         </div>
       </div>
 
@@ -43,6 +49,90 @@ const stockTransactionLabels: Record<number, string> = {
       }
       @if (success) {
         <div class="message success" style="margin-bottom: 14px;">{{ success }}</div>
+      }
+
+      <!-- Top-Expandable Inward Handset Form -->
+      @if (activeTopForm === 'inward') {
+        <section class="top-form-card">
+          <div class="top-form-header">
+            <div class="top-form-title">
+              <span class="badge good">+ FAST INWARD</span>
+              <h3>📥 Inward Stock to Shelves</h3>
+            </div>
+            <button class="btn ghost" type="button" (click)="closeTopForm()" title="Collapse form">✕ Close</button>
+          </div>
+          <div class="top-form-body">
+            <div class="grid three">
+              <label class="field" style="grid-column: span 2;">
+                <span>Handset Model / Accessory SKU <span class="required-star">*</span></span>
+                <select class="select" name="receiveProductId" [(ngModel)]="receiveModel.productId">
+                  <option value="">-- Choose Handset / Accessory to Inward --</option>
+                  @for (product of products; track product.id) {
+                    <option [value]="product.id">{{ product.name }} (SKU: {{ product.sku }}) — Current Stock: {{ product.quantityOnHand }}</option>
+                  }
+                </select>
+              </label>
+              <label class="field">
+                <span>Units Received <span class="required-star">*</span></span>
+                <input class="input" type="number" min="1" name="receiveQuantity" [(ngModel)]="receiveModel.quantity" placeholder="e.g. 10">
+              </label>
+            </div>
+            <div class="grid two" style="margin-top: 10px;">
+              <label class="field">
+                <span>Distributor Invoice / PO Ref</span>
+                <input class="input" name="supplierReference" [(ngModel)]="receiveModel.supplierReference" placeholder="e.g. INV-DIST-2026-084">
+              </label>
+            </div>
+            <div class="top-form-footer">
+              <button class="btn ghost" type="button" (click)="closeTopForm()">Cancel</button>
+              <button class="btn primary" type="button" (click)="receiveStock()" [disabled]="!receiveModel.productId || receiveModel.quantity < 1">
+                ✓ Inward Stock to Shelves
+              </button>
+            </div>
+          </div>
+        </section>
+      }
+
+      <!-- Top-Expandable Stock Adjustment Form -->
+      @if (activeTopForm === 'adjust') {
+        <section class="top-form-card">
+          <div class="top-form-header">
+            <div class="top-form-title">
+              <span class="badge warn">AUDIT CORRECTION</span>
+              <h3>⚖️ Manual Stock Adjustment & Audit Reconciliation</h3>
+            </div>
+            <button class="btn ghost" type="button" (click)="closeTopForm()" title="Collapse form">✕ Close</button>
+          </div>
+          <div class="top-form-body">
+            <div class="grid three">
+              <label class="field" style="grid-column: span 2;">
+                <span>Select Handset / Accessory <span class="required-star">*</span></span>
+                <select class="select" name="adjustProductId" [(ngModel)]="adjustModel.productId">
+                  <option value="">-- Select Product for Physical Reconciliation --</option>
+                  @for (product of products; track product.id) {
+                    <option [value]="product.id">{{ product.name }} (Current: {{ product.quantityOnHand }})</option>
+                  }
+                </select>
+              </label>
+              <label class="field">
+                <span>Quantity Change (+ / -) <span class="required-star">*</span></span>
+                <input class="input" type="number" name="adjustQuantity" [(ngModel)]="adjustModel.quantity" placeholder="e.g. -1 for demo display">
+              </label>
+            </div>
+            <div class="grid two" style="margin-top: 10px;">
+              <label class="field" style="grid-column: span 2;">
+                <span>Reason / Authorization Note <span class="required-star">*</span></span>
+                <input class="input" name="adjustReason" [(ngModel)]="adjustModel.reason" placeholder="e.g. Floor demo unit / stock audit discrepancy">
+              </label>
+            </div>
+            <div class="top-form-footer">
+              <button class="btn ghost" type="button" (click)="closeTopForm()">Cancel</button>
+              <button class="btn primary" type="button" (click)="adjustStock()" [disabled]="!adjustModel.productId || adjustModel.quantity === 0">
+                Apply Stock Correction
+              </button>
+            </div>
+          </div>
+        </section>
       }
 
       <!-- Inventory Executive Valuation Cards -->
@@ -74,77 +164,6 @@ const stockTransactionLabels: Record<number, string> = {
         </div>
       </section>
 
-      <!-- Quick Operations Split: Receive Stock & Adjust Stock -->
-      <section class="grid two" style="margin-top: 16px;">
-        <div class="panel panel-accent" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);">
-          <div class="panel-header" style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
-            <div>
-              <strong style="font-size: 1rem; color: #0f172a;">📥 Fast Inward / Receive Handsets</strong>
-              <p style="margin: 2px 0 0; font-size: 0.78rem; color: #64748b;">Record bulk shipments or vendor deliveries directly into retail stock</p>
-            </div>
-            <span class="badge good">+ Inward</span>
-          </div>
-          <div class="panel-body grid" style="padding: 20px;">
-            <label class="field">
-              <span>Handset Model / Accessory SKU <span class="required-star">*</span></span>
-              <select class="select" name="receiveProductId" [(ngModel)]="receiveModel.productId">
-                <option value="">-- Choose Handset / Accessory to Inward --</option>
-                @for (product of products; track product.id) {
-                  <option [value]="product.id">{{ product.name }} (SKU: {{ product.sku }}) — Current Stock: {{ product.quantityOnHand }}</option>
-                }
-              </select>
-            </label>
-            <div class="grid two">
-              <label class="field">
-                <span>Units Received <span class="required-star">*</span></span>
-                <input class="input" type="number" min="1" name="receiveQuantity" [(ngModel)]="receiveModel.quantity" placeholder="e.g. 10">
-              </label>
-              <label class="field">
-                <span>Distributor Invoice / PO Ref</span>
-                <input class="input" name="supplierReference" [(ngModel)]="receiveModel.supplierReference" placeholder="e.g. INV-DIST-2026-084">
-              </label>
-            </div>
-            <button class="btn primary" type="button" (click)="receiveStock()" [disabled]="!receiveModel.productId || receiveModel.quantity < 1" style="margin-top: 4px;">
-              ✓ Inward Stock to Shelves
-            </button>
-          </div>
-        </div>
-
-        <div class="panel panel-accent" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);">
-          <div class="panel-header" style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
-            <div>
-              <strong style="font-size: 1rem; color: #0f172a;">⚖️ Manual Stock Adjustment</strong>
-              <p style="margin: 2px 0 0; font-size: 0.78rem; color: #64748b;">Discrepancy reconciliation, floor demo write-offs, or stock audit</p>
-            </div>
-            <span class="badge warn">Audit</span>
-          </div>
-          <div class="panel-body grid" style="padding: 20px;">
-            <label class="field">
-              <span>Select Handset / Accessory <span class="required-star">*</span></span>
-              <select class="select" name="adjustProductId" [(ngModel)]="adjustModel.productId">
-                <option value="">-- Select Product for Physical Reconciliation --</option>
-                @for (product of products; track product.id) {
-                  <option [value]="product.id">{{ product.name }} (Current: {{ product.quantityOnHand }})</option>
-                }
-              </select>
-            </label>
-            <div class="grid two">
-              <label class="field">
-                <span>Quantity Change (+ / -) <span class="required-star">*</span></span>
-                <input class="input" type="number" name="adjustQuantity" [(ngModel)]="adjustModel.quantity" placeholder="e.g. -1 for demo display">
-              </label>
-              <label class="field">
-                <span>Reason / Authorization Note <span class="required-star">*</span></span>
-                <input class="input" name="adjustReason" [(ngModel)]="adjustModel.reason" placeholder="e.g. Floor demo unit / stock audit">
-              </label>
-            </div>
-            <button class="btn primary" type="button" (click)="adjustStock()" [disabled]="!adjustModel.productId || adjustModel.quantity === 0" style="margin-top: 4px;">
-              Apply Stock Correction
-            </button>
-          </div>
-        </div>
-      </section>
-
       <!-- Stock On Hand Section with Filters -->
       <section class="panel" style="margin-top: 20px;" [class.loading]="loading">
         <div class="panel-header filter-toolbar">
@@ -165,7 +184,7 @@ const stockTransactionLabels: Record<number, string> = {
         </div>
 
         <div class="table-wrap">
-          <table class="inventory-table">
+          <table class="inventory-table" style="width: 100%;">
             <thead>
               <tr>
                 <th>Product Model & Specs</th>
@@ -176,13 +195,13 @@ const stockTransactionLabels: Record<number, string> = {
                 <th style="text-align: center;">Margin</th>
                 <th style="text-align: center;">On Hand</th>
                 <th style="text-align: center;">Status</th>
-                <th style="text-align: right;">Valuation at Cost (₹)</th>
-                <th style="text-align: right;">Quick Stock-In</th>
+                <th style="text-align: right;">Valuation (₹)</th>
+                <th class="actions">Actions</th>
               </tr>
             </thead>
             <tbody>
               @for (item of filteredStocks; track item.stock.productId) {
-                <tr class="stock-row" [class.out-of-stock-row]="item.stock.quantityOnHand === 0">
+                <tr class="stock-row" [class.active-row]="adjustModel.productId === item.stock.productId && activeTopForm === 'adjust'" [class.out-of-stock-row]="item.stock.quantityOnHand === 0">
                   <td>
                     <strong>{{ item.stock.productName }}</strong>
                     @if (item.product?.brandName) {
@@ -220,13 +239,13 @@ const stockTransactionLabels: Record<number, string> = {
                   <td class="text-right font-bold">
                     ₹{{ (item.stock.quantityOnHand * (item.product?.costPrice || 0)) | number:'1.2-2' }}
                   </td>
-                  <td class="text-right">
+                  <td class="actions">
                     <div class="quick-in-buttons">
                       <button type="button" class="btn-fast-in" (click)="quickReceive(item.stock.productId, 5)" title="Quick Receive +5 units">+5</button>
                       <button type="button" class="btn-fast-in" (click)="quickReceive(item.stock.productId, 10)" title="Quick Receive +10 units">+10</button>
+                      <button type="button" class="btn-fast-in" style="color: #d97706;" (click)="openAdjustForProduct(item.stock.productId)" title="Adjust physical stock count">⚖️</button>
                     </div>
                   </td>
-                </tr>
               } @empty {
                 <tr>
                   <td colspan="10"><div class="empty-state">No matching stock records found.</div></td>
@@ -459,6 +478,7 @@ export class InventoryComponent implements OnInit {
   receiveModel = { productId: '', quantity: 1, supplierReference: '' };
   adjustModel = { productId: '', quantity: 0, reason: '' };
 
+  activeTopForm: 'inward' | 'adjust' | null = null;
   filterCategory: 'all' | 'low' | 'out' | 'mobiles' | 'tablets' = 'all';
   searchTerm = '';
 
@@ -467,6 +487,25 @@ export class InventoryComponent implements OnInit {
   success = '';
   readonly dateTime = dateTime;
   readonly money = money;
+
+  toggleTopForm(form: 'inward' | 'adjust'): void {
+    if (this.activeTopForm === form) {
+      this.closeTopForm();
+    } else {
+      this.activeTopForm = form;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  closeTopForm(): void {
+    this.activeTopForm = null;
+  }
+
+  openAdjustForProduct(productId: string): void {
+    this.adjustModel.productId = productId;
+    this.activeTopForm = 'adjust';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
   constructor(private readonly api: ApiService) {}
 
@@ -605,6 +644,7 @@ export class InventoryComponent implements OnInit {
       next: () => {
         this.success = 'Stock successfully received and added to inventory.';
         this.receiveModel = { productId: '', quantity: 1, supplierReference: '' };
+        this.closeTopForm();
         this.loadAll();
       },
       error: (error) => (this.error = apiErrorMessage(error))
@@ -618,6 +658,7 @@ export class InventoryComponent implements OnInit {
       next: () => {
         this.success = 'Stock physical adjustment recorded successfully.';
         this.adjustModel = { productId: '', quantity: 0, reason: '' };
+        this.closeTopForm();
         this.loadAll();
       },
       error: (error) => (this.error = apiErrorMessage(error))
