@@ -18,23 +18,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup MSBuild path
-        uses: microsoft/setup-msbuild@v1.0.2
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
 
-      - name: Setup NuGet
-        uses: NuGet/setup-nuget@v1.0.5
+      - name: Restore dependencies
+        run: dotnet restore
 
-      - name: Restore NuGet packages
-        run: nuget restore
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
 
-      - name: Publish to folder
-        run: msbuild /nologo /verbosity:m /t:Build /t:pipelinePreDeployCopyAllFilesToOneFolder /p:_PackageTempDir="\published\"
+      - name: Publish
+        run: dotnet publish MobileShop.Api/MobileShop.Api.csproj --configuration Release --no-build --output ./published
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: ASP-app
-          path: '/published/**'
+          path: ./published
 
   deploy:
     runs-on: windows-latest
@@ -48,6 +50,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ASP-app
+          path: ./published
       
       - name: Login to Azure
         uses: azure/login@v2
@@ -62,5 +65,4 @@ jobs:
         with:
           app-name: 'mobile-shop'
           slot-name: 'Production'
-          package: .
-          
+          package: ./published

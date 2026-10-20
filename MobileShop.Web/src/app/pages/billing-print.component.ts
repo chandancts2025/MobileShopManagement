@@ -221,68 +221,71 @@ import { BillDto } from '../core/api.models';
             </div>
 
             <!-- Flipkart / Amazon Standard Itemized Product Table -->
-            <table class="a4-items-table">
-              <thead>
-                <tr>
-                  <th style="width: 4%;">#</th>
-                  <th style="width: 28%;">Item Description & Specifications</th>
-                  <th style="width: 9%;">HSN/SAC</th>
-                  <th style="width: 5%; text-align: center;">Qty</th>
-                  <th style="width: 11%; text-align: right;">Gross Rate (₹)</th>
-                  <th style="width: 8%; text-align: right;">Discount (₹)</th>
-                  <th style="width: 11%; text-align: right;">Taxable Value (₹)</th>
-                  <th style="width: 8%; text-align: right;">CGST (9%)</th>
-                  <th style="width: 8%; text-align: right;">SGST (9%)</th>
-                  <th style="width: 8%; text-align: right;">Total Amount (₹)</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (item of bill.items; track item.id; let idx = $index) {
+            <div class="mobile-scroll-hint no-print">↔ Swipe horizontally to view full table details</div>
+            <div class="table-scroll-wrap">
+              <table class="a4-items-table">
+                <thead>
                   <tr>
-                    <td class="text-center font-mono">{{ idx + 1 }}</td>
-                    <td>
-                      <div class="item-name"><strong>{{ item.description }}</strong></div>
-                      @if (globalImei) {
-                        <div class="imei-subtext"><span class="imei-pill">{{ globalImei }}</span></div>
-                      }
-                      <div class="specs-subtext">Brand New • Retail Pack • 1-Year Manufacturer Warranty</div>
-                    </td>
-                    <td class="text-center font-mono hsn-code">{{ getItemHsn(item) }}</td>
-                    <td class="text-center font-bold">{{ item.quantity }}</td>
-                    <td class="text-right num-col">{{ (item.totalAmount || item.unitPrice * item.quantity) | number:'1.2-2' }}</td>
-                    <td class="text-right num-col disc-col">
-                      @if (getItemDiscount(item, bill) > 0) {
-                        -₹{{ getItemDiscount(item, bill) | number:'1.2-2' }}
+                    <th style="width: 4%;">#</th>
+                    <th style="width: 28%;">Item Description & Specifications</th>
+                    <th style="width: 9%;">HSN/SAC</th>
+                    <th style="width: 5%; text-align: center;">Qty</th>
+                    <th style="width: 11%; text-align: right;">Gross Rate (₹)</th>
+                    <th style="width: 8%; text-align: right;">Discount (₹)</th>
+                    <th style="width: 11%; text-align: right;">Taxable Value (₹)</th>
+                    <th style="width: 8%; text-align: right;">CGST (9%)</th>
+                    <th style="width: 8%; text-align: right;">SGST (9%)</th>
+                    <th style="width: 8%; text-align: right;">Total Amount (₹)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of bill.items; track item.id; let idx = $index) {
+                    <tr>
+                      <td class="text-center font-mono">{{ idx + 1 }}</td>
+                      <td>
+                        <div class="item-name"><strong>{{ item.description }}</strong></div>
+                        @if (globalImei) {
+                          <div class="imei-subtext"><span class="imei-pill">{{ globalImei }}</span></div>
+                        }
+                        <div class="specs-subtext">Brand New • Retail Pack • 1-Year Manufacturer Warranty</div>
+                      </td>
+                      <td class="text-center font-mono hsn-code">{{ getItemHsn(item) }}</td>
+                      <td class="text-center font-bold">{{ item.quantity }}</td>
+                      <td class="text-right num-col">{{ (item.unitPrice || (item.totalAmount / (item.quantity || 1))) | number:'1.2-2' }}</td>
+                      <td class="text-right num-col disc-col">
+                        @if (getItemDiscount(item, bill) > 0) {
+                          -₹{{ getItemDiscount(item, bill) | number:'1.2-2' }}
+                        } @else {
+                          ₹0.00
+                        }
+                      </td>
+                      <td class="text-right num-col taxable-col"><strong>₹{{ getItemTaxable(item, bill) | number:'1.2-2' }}</strong></td>
+                      <td class="text-right num-col tax-col">₹{{ getItemCgst(item, bill) | number:'1.2-2' }}</td>
+                      <td class="text-right num-col tax-col">₹{{ getItemSgst(item, bill) | number:'1.2-2' }}</td>
+                      <td class="text-right num-col item-total-col"><strong>₹{{ getItemTotal(item, bill) | number:'1.2-2' }}</strong></td>
+                    </tr>
+                  }
+                </tbody>
+                <tfoot>
+                  <tr class="items-total-row">
+                    <td colspan="3" class="text-right"><strong>Total ({{ bill.items.length }} {{ bill.items.length === 1 ? 'item' : 'items' }})</strong></td>
+                    <td class="text-center font-bold">{{ getItemsQuantity(bill) }}</td>
+                    <td class="text-right font-bold">₹{{ bill.subtotal | number:'1.2-2' }}</td>
+                    <td class="text-right font-bold disc-col">
+                      @if (bill.discountAmount > 0) {
+                        -₹{{ bill.discountAmount | number:'1.2-2' }}
                       } @else {
                         ₹0.00
                       }
                     </td>
-                    <td class="text-right num-col taxable-col"><strong>₹{{ getItemTaxable(item, bill) | number:'1.2-2' }}</strong></td>
-                    <td class="text-right num-col tax-col">₹{{ getItemCgst(item, bill) | number:'1.2-2' }}</td>
-                    <td class="text-right num-col tax-col">₹{{ getItemSgst(item, bill) | number:'1.2-2' }}</td>
-                    <td class="text-right num-col item-total-col"><strong>₹{{ getItemTotal(item, bill) | number:'1.2-2' }}</strong></td>
+                    <td class="text-right font-bold taxable-col">₹{{ getTaxableValue(bill) | number:'1.2-2' }}</td>
+                    <td class="text-right font-bold tax-col">₹{{ getCgst(bill) | number:'1.2-2' }}</td>
+                    <td class="text-right font-bold tax-col">₹{{ getSgst(bill) | number:'1.2-2' }}</td>
+                    <td class="text-right font-bold grand-col">₹{{ getGrandTotal(bill) | number:'1.2-2' }}</td>
                   </tr>
-                }
-              </tbody>
-              <tfoot>
-                <tr class="items-total-row">
-                  <td colspan="3" class="text-right"><strong>Total ({{ bill.items.length }} {{ bill.items.length === 1 ? 'item' : 'items' }})</strong></td>
-                  <td class="text-center font-bold">{{ getItemsQuantity(bill) }}</td>
-                  <td class="text-right font-bold">₹{{ bill.subtotal | number:'1.2-2' }}</td>
-                  <td class="text-right font-bold disc-col">
-                    @if (bill.discountAmount > 0) {
-                      -₹{{ bill.discountAmount | number:'1.2-2' }}
-                    } @else {
-                      ₹0.00
-                    }
-                  </td>
-                  <td class="text-right font-bold taxable-col">₹{{ getTaxableValue(bill) | number:'1.2-2' }}</td>
-                  <td class="text-right font-bold tax-col">₹{{ getCgst(bill) | number:'1.2-2' }}</td>
-                  <td class="text-right font-bold tax-col">₹{{ getSgst(bill) | number:'1.2-2' }}</td>
-                  <td class="text-right font-bold grand-col">₹{{ getGrandTotal(bill) | number:'1.2-2' }}</td>
-                </tr>
-              </tfoot>
-            </table>
+                </tfoot>
+              </table>
+            </div>
 
             <!-- Amazon / Flipkart Secondary HSN / Tax Schedule Table -->
             <div class="hsn-summary-card">
@@ -290,45 +293,47 @@ import { BillDto } from '../core/api.models';
                 <span>GST TAX ANALYSIS SCHEDULE (IN ACCORDANCE WITH SECTION 15 OF THE CGST ACT, 2017)</span>
                 <span class="place-badge">Supply: West Bengal (Intra-State: CGST 9% + SGST 9%)</span>
               </div>
-              <table class="hsn-summary-table">
-                <thead>
-                  <tr>
-                    <th rowspan="2" style="width: 14%;">HSN / SAC</th>
-                    <th rowspan="2" style="width: 24%;">Taxable Amount (₹)</th>
-                    <th colspan="2" style="width: 23%;">Central Tax (CGST)</th>
-                    <th colspan="2" style="width: 23%;">State Tax (SGST)</th>
-                    <th rowspan="2" style="width: 16%;">Total Tax Amount (₹)</th>
-                  </tr>
-                  <tr>
-                    <th style="width: 8%;">Rate</th>
-                    <th style="width: 15%;">Amount (₹)</th>
-                    <th style="width: 8%;">Rate</th>
-                    <th style="width: 15%;">Amount (₹)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td class="text-center font-mono">8517 13 00</td>
-                    <td class="text-right">₹{{ getTaxableValue(bill) | number:'1.2-2' }}</td>
-                    <td class="text-center">9.00%</td>
-                    <td class="text-right">₹{{ getCgst(bill) | number:'1.2-2' }}</td>
-                    <td class="text-center">9.00%</td>
-                    <td class="text-right">₹{{ getSgst(bill) | number:'1.2-2' }}</td>
-                    <td class="text-right font-bold">₹{{ getTotalTax(bill) | number:'1.2-2' }}</td>
-                  </tr>
-                </tbody>
-                <tfoot>
-                  <tr class="hsn-total-row">
-                    <td class="text-center font-bold">TOTAL TAX</td>
-                    <td class="text-right font-bold">₹{{ getTaxableValue(bill) | number:'1.2-2' }}</td>
-                    <td></td>
-                    <td class="text-right font-bold">₹{{ getCgst(bill) | number:'1.2-2' }}</td>
-                    <td></td>
-                    <td class="text-right font-bold">₹{{ getSgst(bill) | number:'1.2-2' }}</td>
-                    <td class="text-right font-bold">₹{{ getTotalTax(bill) | number:'1.2-2' }}</td>
-                  </tr>
-                </tfoot>
-              </table>
+              <div class="table-scroll-wrap" style="margin-bottom: 0;">
+                <table class="hsn-summary-table">
+                  <thead>
+                    <tr>
+                      <th rowspan="2" style="width: 14%;">HSN / SAC</th>
+                      <th rowspan="2" style="width: 24%;">Taxable Amount (₹)</th>
+                      <th colspan="2" style="width: 23%;">Central Tax (CGST)</th>
+                      <th colspan="2" style="width: 23%;">State Tax (SGST)</th>
+                      <th rowspan="2" style="width: 16%;">Total Tax Amount (₹)</th>
+                    </tr>
+                    <tr>
+                      <th style="width: 8%;">Rate</th>
+                      <th style="width: 15%;">Amount (₹)</th>
+                      <th style="width: 8%;">Rate</th>
+                      <th style="width: 15%;">Amount (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="text-center font-mono">8517 13 00</td>
+                      <td class="text-right">₹{{ getTaxableValue(bill) | number:'1.2-2' }}</td>
+                      <td class="text-center">9.00%</td>
+                      <td class="text-right">₹{{ getCgst(bill) | number:'1.2-2' }}</td>
+                      <td class="text-center">9.00%</td>
+                      <td class="text-right">₹{{ getSgst(bill) | number:'1.2-2' }}</td>
+                      <td class="text-right font-bold">₹{{ getTotalTax(bill) | number:'1.2-2' }}</td>
+                    </tr>
+                  </tbody>
+                  <tfoot>
+                    <tr class="hsn-total-row">
+                      <td class="text-center font-bold">TOTAL TAX</td>
+                      <td class="text-right font-bold">₹{{ getTaxableValue(bill) | number:'1.2-2' }}</td>
+                      <td></td>
+                      <td class="text-right font-bold">₹{{ getCgst(bill) | number:'1.2-2' }}</td>
+                      <td></td>
+                      <td class="text-right font-bold">₹{{ getSgst(bill) | number:'1.2-2' }}</td>
+                      <td class="text-right font-bold">₹{{ getTotalTax(bill) | number:'1.2-2' }}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             </div>
 
             <!-- Financial Summary & Tax Breakdown (Words & Fixed Calc Card) -->
@@ -1499,6 +1504,250 @@ import { BillDto } from '../core/api.models';
     .text-center { text-align: center; }
     .text-right { text-align: right; }
 
+    .table-scroll-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin-bottom: 14px;
+    }
+
+    .mobile-scroll-hint {
+      display: none;
+    }
+
+    /* -------------------------------------------------------------------------
+       Responsive Mobile Styles (@media screen and (max-width: 768px))
+       ------------------------------------------------------------------------- */
+    @media screen and (max-width: 768px) {
+      .billing-print-page {
+        padding: 12px 8px !important;
+        overflow-x: hidden !important;
+      }
+
+      .screen-toolbar {
+        border-radius: 8px !important;
+        margin: 0 auto 14px auto !important;
+      }
+
+      .toolbar-container {
+        padding: 12px 14px !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+      }
+
+      .toolbar-brand {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .format-toggle {
+        width: 100%;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+
+      .format-toggle .btn-group {
+        width: 100%;
+        display: flex;
+      }
+
+      .format-toggle .format-btn {
+        flex: 1;
+        text-align: center;
+        padding: 8px 6px;
+        font-size: 0.8rem;
+      }
+
+      .toolbar-actions {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .print-trigger-btn {
+        width: 100%;
+        padding: 10px;
+        font-size: 0.9rem;
+      }
+
+      .options-drawer {
+        padding: 12px 14px;
+      }
+
+      .options-grid {
+        grid-template-columns: 1fr;
+      }
+
+      /* A4 Mobile Invoice Overrides */
+      .invoice-a4 {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 14px 10px !important;
+        border-radius: 8px !important;
+        box-sizing: border-box !important;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
+        overflow-x: hidden !important;
+      }
+
+      .a4-header-top {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 6px !important;
+      }
+
+      .invoice-badge {
+        font-size: 0.96rem !important;
+      }
+
+      .copy-badge {
+        font-size: 0.68rem !important;
+      }
+
+      .a4-grid-header {
+        grid-template-columns: 1fr !important;
+        gap: 14px !important;
+      }
+
+      .shop-brand {
+        align-items: flex-start !important;
+      }
+
+      .shop-logo {
+        font-size: 1.8rem !important;
+      }
+
+      .shop-title {
+        font-size: 1.15rem !important;
+      }
+
+      .meta-col {
+        border-top: 1px dashed #cbd5e1;
+        padding-top: 10px;
+      }
+
+      .meta-table th {
+        width: 48% !important;
+        padding: 3px 2px !important;
+        font-size: 0.76rem !important;
+      }
+
+      .meta-table td {
+        padding: 3px 2px !important;
+        font-size: 0.78rem !important;
+      }
+
+      .a4-parties-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+      }
+
+      .box-header {
+        font-size: 0.68rem !important;
+        padding: 4px 8px !important;
+      }
+
+      .box-body {
+        padding: 8px 10px !important;
+        font-size: 0.78rem !important;
+      }
+
+      /* Horizontal scroll hint & container */
+      .mobile-scroll-hint {
+        display: flex !important;
+        align-items: center;
+        justify-content: flex-end;
+        font-size: 0.72rem;
+        color: #0d7a5f;
+        font-weight: 600;
+        margin-bottom: 6px;
+        gap: 4px;
+      }
+
+      .table-scroll-wrap {
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        background: #ffffff;
+        box-shadow: inset -6px 0 8px -4px rgba(0, 0, 0, 0.08);
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .a4-items-table {
+        min-width: 680px !important;
+        border: none !important;
+        margin-bottom: 0 !important;
+      }
+
+      .hsn-summary-table {
+        min-width: 580px !important;
+        border: none !important;
+        margin-bottom: 0 !important;
+      }
+
+      /* Stack Summary & Calc Col */
+      .a4-summary-grid {
+        flex-direction: column !important;
+        gap: 14px !important;
+      }
+
+      .words-col {
+        width: 100% !important;
+      }
+
+      .calc-col {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        flex: 1 1 100% !important;
+      }
+
+      .calc-card {
+        width: 100% !important;
+      }
+
+      .calc-table {
+        width: 100% !important;
+      }
+
+      .calc-table td.calc-label {
+        font-size: 0.76rem !important;
+        padding: 6px 8px !important;
+      }
+
+      .calc-table td.calc-val {
+        font-size: 0.78rem !important;
+        padding: 6px 8px !important;
+      }
+
+      .a4-signatures {
+        flex-direction: column !important;
+        gap: 20px !important;
+        align-items: center !important;
+        margin-top: 24px !important;
+      }
+
+      .sign-block {
+        width: 100% !important;
+        max-width: 260px !important;
+      }
+
+      /* 80mm Mobile Mode */
+      .mode-80mm {
+        padding: 12px 8px !important;
+      }
+
+      .invoice-80mm {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 14px 10px !important;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08) !important;
+      }
+    }
+
     /* -------------------------------------------------------------------------
        Print Specific Rules (@media print)
        ------------------------------------------------------------------------- */
@@ -1510,6 +1759,16 @@ import { BillDto } from '../core/api.models';
       }
 
       .no-print {
+        display: none !important;
+      }
+
+      .table-scroll-wrap {
+        overflow: visible !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
+
+      .mobile-scroll-hint {
         display: none !important;
       }
 
