@@ -7,13 +7,17 @@ import { AuthResponse, LoginRequest, RegisterCustomerRequest, RoleName, roleName
 
 const STORAGE_KEY = 'mobile-shop-session';
 
+import { getApiBaseUrl } from './api-url';
+
 export interface AuthSession extends AuthResponse {
   roleName: RoleName;
 }
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly apiBaseUrl = environment.apiBaseUrl.replace(/\/$/, '');
+  private get apiBaseUrl(): string {
+    return getApiBaseUrl();
+  }
   private readonly state = signal<AuthSession | null>(readSession());
 
   readonly session = this.state.asReadonly();

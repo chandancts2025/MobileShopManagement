@@ -3,11 +3,12 @@ import { inject } from '@angular/core';
 import { catchError, switchMap, throwError } from 'rxjs';
 
 import { environment } from '../../environments/environment';
+import { getApiBaseUrl } from './api-url';
 import { AuthService } from './auth.service';
 
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const auth = inject(AuthService);
-  const apiBaseUrl = environment.apiBaseUrl.replace(/\/$/, '');
+  const apiBaseUrl = getApiBaseUrl();
   const isApiRequest = request.url.startsWith(apiBaseUrl);
   const isAuthRequest = request.url.includes('/api/auth/login') ||
     request.url.includes('/api/auth/register') ||

@@ -91,74 +91,67 @@ interface NavGroup {
 
       <!-- Main Content Area -->
       <main class="main">
-        <!-- Topbar -->
+        <!-- Topbar: Sleek, compact single-row design -->
         <header class="topbar">
-          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div class="topbar-left">
             <button class="mobile-toggle-btn" (click)="toggleMobileMenu()" title="Open Navigation Menu">
               ☰
             </button>
-            <div class="topbar-branding">
-              <strong>{{ auth.session()?.roleName || 'Shopper' }} Portal</strong>
-              <p class="muted" style="margin: 2px 0 0; font-size: 0.75rem;">Fast, secure retail & device service</p>
+            <div class="topbar-brand-chip">
+              <span class="portal-badge">{{ auth.session()?.roleName || 'Shopper' }}</span>
+              <span class="portal-sep">/</span>
+              <span class="portal-title">MobileShop</span>
             </div>
-            <!-- Owner Contact Badge in Topbar -->
-            <a class="owner-header-badge desktop-only" href="tel:+919851632391" title="Call Owner Chandan Kr Mandal">
-              <span class="owner-badge-dot"></span>
-              <span>Prop: <strong>Chandan Kr Mandal</strong> • 📞 +91 9851632391</span>
+            <a class="owner-pill desktop-only" href="tel:+919851632391" title="Direct Phone: Chandan Kr Mandal (Proprietor)">
+              <span class="status-indicator"></span>
+              <span>📞 +91 9851632391</span>
             </a>
           </div>
 
-          <div class="topbar-actions">
-            <!-- Storefront Quick Links -->
-            <a class="btn ghost topbar-link desktop-only" routerLink="/home" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" title="Home">
-              <span>🏠</span>
-              <span class="topbar-text">Home</span>
-            </a>
-            <a class="btn ghost topbar-link desktop-only" routerLink="/about" routerLinkActive="active" title="About Us & Founder">
-              <span>ℹ️</span>
-              <span class="topbar-text">About</span>
-            </a>
-            <a class="btn ghost topbar-link desktop-only" routerLink="/contact" routerLinkActive="active" title="Contact Store & Owner">
-              <span>📞</span>
-              <span class="topbar-text">Contact</span>
-            </a>
+          <!-- Desktop Center Navigation -->
+          <nav class="topbar-nav desktop-only">
+            <a class="nav-item" routerLink="/home" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Home</a>
+            <a class="nav-item" routerLink="/catalog" routerLinkActive="active">Catalog</a>
+            <a class="nav-item" routerLink="/repair-tracking" routerLinkActive="active">Track Repair</a>
+            <a class="nav-item" routerLink="/about" routerLinkActive="active">About</a>
+            <a class="nav-item" routerLink="/contact" routerLinkActive="active">Contact</a>
+          </nav>
 
-            <!-- Repair Tracking Quick Link -->
-            <a class="btn ghost topbar-link" routerLink="/repair-tracking" title="Track phone repair">
-              <span>🔧</span>
-              <span class="topbar-text">Track Repair</span>
-            </a>
-
-            <!-- Notifications Icon with Badge -->
-            <a class="btn ghost topbar-link" routerLink="/notifications" title="Notifications" style="position: relative;">
+          <!-- Right Action Utilities -->
+          <div class="topbar-right">
+            <!-- Notifications Icon -->
+            <a class="action-icon-btn" routerLink="/notifications" title="Notifications">
               <span>🔔</span>
               @if (unreadCount() > 0) {
-                <span class="notification-dot">{{ unreadCount() }}</span>
+                <span class="action-badge">{{ unreadCount() }}</span>
               }
             </a>
 
-            <!-- Wishlist Button (Customer) -->
+            <!-- Wishlist (Customer) -->
             @if (auth.hasAnyRole(['Customer'])) {
-              <a class="btn ghost topbar-link" routerLink="/wishlist" title="Wishlist">
+              <a class="action-icon-btn" routerLink="/wishlist" title="Wishlist">
                 <span>❤️</span>
-                <span class="topbar-text">Wishlist</span>
               </a>
             }
 
-            <!-- Cart Button -->
-            <a class="btn ghost" routerLink="/cart" style="display: flex; align-items: center; gap: 6px;">
+            <!-- Cart Pill -->
+            <a class="cart-pill-btn" routerLink="/cart" title="Shopping Cart">
               <span>🛒</span>
-              <strong>Cart ({{ cart.count() }})</strong>
+              <span class="cart-count">{{ cart.count() }}</span>
             </a>
 
-            <!-- Auth Buttons -->
+            <!-- Auth Buttons / User Profile -->
             @if (!auth.isAuthenticated()) {
-              <a class="btn" routerLink="/login">Sign in</a>
-              <a class="btn primary" routerLink="/register">Register</a>
+              <div class="auth-group">
+                <a class="auth-btn-signin" routerLink="/login">Sign in</a>
+                <a class="auth-btn-reg" routerLink="/register">Register</a>
+              </div>
             } @else {
-              <button class="btn ghost desktop-only" (click)="logout()" title="Sign out" style="padding: 6px 12px;">
-                Logout
-              </button>
+              <div class="user-chip desktop-only">
+                <span class="user-avatar-mini">{{ (auth.session()?.fullName || auth.session()?.email || 'U').charAt(0).toUpperCase() }}</span>
+                <span class="user-name-mini" [title]="auth.session()?.fullName || auth.session()?.email">{{ auth.session()?.fullName || auth.session()?.email }}</span>
+                <button class="logout-mini-btn" (click)="logout()" title="Sign out">✕</button>
+              </div>
             }
           </div>
         </header>
@@ -417,31 +410,269 @@ interface NavGroup {
       }
     }
 
-    .owner-header-badge {
+    /* Sleek Compact Topbar Styles */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      height: 52px;
+      min-height: 52px;
+      max-height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 20px;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+      box-sizing: border-box;
+      flex-wrap: nowrap;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .topbar-brand-chip {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 5px 12px;
+      gap: 6px;
+      padding: 3px 9px;
       background: var(--surface-2);
       border: 1px solid var(--line);
-      border-radius: 999px;
-      font-size: 0.8rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+    }
+    .portal-badge {
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .portal-sep {
+      color: var(--muted);
+      opacity: 0.5;
+    }
+    .portal-title {
       color: var(--text);
+      font-weight: 600;
+    }
+
+    .owner-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      background: rgba(22, 163, 74, 0.08);
+      border: 1px solid rgba(22, 163, 74, 0.25);
+      border-radius: 999px;
+      color: #15803d;
+      font-size: 0.74rem;
+      font-weight: 600;
       text-decoration: none;
       transition: all 0.2s ease;
       white-space: nowrap;
     }
-    .owner-header-badge:hover {
-      border-color: var(--primary);
-      color: var(--primary);
-      background: rgba(13, 122, 95, 0.05);
+    .owner-pill:hover {
+      background: rgba(22, 163, 74, 0.16);
+      border-color: #16a34a;
+      transform: translateY(-1px);
     }
-    .owner-badge-dot {
-      width: 7px;
-      height: 7px;
+    .status-indicator {
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
       background: #16a34a;
       box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25);
+    }
+
+    .topbar-nav {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .topbar-nav .nav-item {
+      padding: 5px 11px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .topbar-nav .nav-item:hover {
+      color: var(--text);
+      background: var(--surface-2);
+    }
+    .topbar-nav .nav-item.active {
+      color: var(--primary);
+      background: rgba(13, 122, 95, 0.1);
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .action-icon-btn {
+      position: relative;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+    .action-icon-btn:hover {
+      background: var(--surface);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .action-badge {
+      position: absolute;
+      top: -3px;
+      right: -3px;
+      background: var(--danger);
+      color: white;
+      font-size: 0.65rem;
+      font-weight: 700;
+      border-radius: 999px;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      display: grid;
+      place-items: center;
+      line-height: 1;
+    }
+
+    .cart-pill-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      height: 34px;
+      background: var(--primary);
+      color: white;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 2px 6px rgba(13, 122, 95, 0.25);
+      transition: all 0.15s ease;
+    }
+    .cart-pill-btn:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
+    .cart-count {
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 999px;
+      padding: 1px 7px;
+      font-size: 0.75rem;
+    }
+
+    .auth-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .auth-btn-signin {
+      padding: 5px 12px;
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .auth-btn-signin:hover {
+      background: var(--surface);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .auth-btn-reg {
+      padding: 5px 12px;
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: white;
+      background: var(--primary);
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .auth-btn-reg:hover {
+      filter: brightness(1.08);
+    }
+
+    .user-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 34px;
+      padding: 0 8px 0 4px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font-size: 0.8rem;
+    }
+    .user-avatar-mini {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 0.72rem;
+    }
+    .user-name-mini {
+      max-width: 110px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .logout-mini-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.8rem;
+      padding: 2px 4px;
+      border-radius: 4px;
+      display: grid;
+      place-items: center;
+    }
+    .logout-mini-btn:hover {
+      color: var(--danger);
+      background: rgba(225, 29, 72, 0.1);
+    }
+
+    @media (max-width: 1200px) {
+      .topbar-nav {
+        display: none !important;
+      }
     }
 
     /* Global Storefront Footer */

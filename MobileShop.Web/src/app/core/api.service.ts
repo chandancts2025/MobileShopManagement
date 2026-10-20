@@ -3,13 +3,16 @@ import { Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 
 import { environment } from '../../environments/environment';
+import { getApiBaseUrl } from './api-url';
 import { PagedResult, QueryParameters } from './api.models';
 
 type ParamValue = string | number | boolean | Date | null | undefined;
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-  private readonly baseUrl = environment.apiBaseUrl.replace(/\/$/, '');
+  private get baseUrl(): string {
+    return getApiBaseUrl();
+  }
 
   constructor(private readonly http: HttpClient) {}
 
