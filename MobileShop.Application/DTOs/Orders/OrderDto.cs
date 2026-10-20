@@ -14,4 +14,5 @@ public class OrderDto
     public decimal DiscountAmount { get; set; }
     public OrderStatus Status { get; set; }
     public DateTime CreatedAtUtc { get; set; }
+    public Guid? BillId { get; set; }
 }

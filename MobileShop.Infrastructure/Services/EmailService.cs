@@ -164,12 +164,16 @@ public class EmailService : IEmailService
 
         try
         {
+            // Enforce a strict 4-second timeout so outbound SMTP failures/blocked ports never hang the application
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(4));
+
             using var client = new SmtpClient(_settings.Host, _settings.Port)
             {
                 EnableSsl = _settings.EnableSsl,
                 Credentials = new NetworkCredential(_settings.UserName, _settings.Password),
                 DeliveryMethod = SmtpDeliveryMethod.Network,
-                Timeout = 15000
+                Timeout = 4000
             };
 
             var fromAddress = new MailAddress(_settings.FromEmail, _settings.FromName);
@@ -182,8 +186,12 @@ public class EmailService : IEmailService
                 IsBodyHtml = true
             };
 
-            await client.SendMailAsync(message, cancellationToken);
+            await client.SendMailAsync(message, timeoutCts.Token);
             _logger.LogInformation("Email successfully dispatched to {ToEmail} with subject: '{Subject}'", toEmail, subject);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Email dispatch to {ToEmail} timed out after 4s (likely outbound SMTP port filtered/blocked on host).", toEmail);
         }
         catch (Exception ex)
         {

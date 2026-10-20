@@ -72,7 +72,18 @@ public class AuthService(
         dbContext.CustomerProfiles.Add(profile);
         dbContext.RefreshTokens.Add(refreshToken);
         await dbContext.SaveChangesAsync(cancellationToken);
-        await emailService.SendWelcomeEmailAsync(user.Email, $"{user.FirstName} {user.LastName}".Trim(), cancellationToken);
+
+        var userEmail = user.Email;
+        var userName = $"{user.FirstName} {user.LastName}".Trim();
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                await emailService.SendWelcomeEmailAsync(userEmail, userName, cts.Token);
+            }
+            catch { }
+        });
 
         return BuildAuthResponse(user, refreshToken.Token);
     }

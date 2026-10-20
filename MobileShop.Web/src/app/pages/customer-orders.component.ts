@@ -211,6 +211,13 @@ export class CustomerOrdersComponent implements OnInit {
     this.error = '';
     this.success = '';
 
+    if (order.billId) {
+      this.router.navigate(['/billing', order.billId, 'print'], {
+        queryParams: { format: '80mm' }
+      });
+      return;
+    }
+
     this.api.post<BillDto>(`/api/billing/orders/${order.id}/ensure`, {}).subscribe({
       next: (bill) => {
         this.router.navigate(['/billing', bill.id, 'print'], {

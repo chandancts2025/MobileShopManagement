@@ -247,6 +247,7 @@ export interface OrderDto {
   discountAmount: number;
   status: OrderStatus;
   createdAtUtc: string;
+  billId?: string | null;
 }
 
 export interface PaymentDto {

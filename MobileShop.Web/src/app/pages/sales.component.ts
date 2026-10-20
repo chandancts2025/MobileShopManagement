@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { ApiService, apiErrorMessage } from '../core/api.service';
 import {
@@ -267,7 +267,10 @@ export class SalesComponent implements OnInit {
     }
   }
 
-  constructor(private readonly api: ApiService) {}
+  constructor(
+    private readonly api: ApiService,
+    private readonly router: Router
+  ) {}
 
   toggleTopForm(form: 'payment' | 'return'): void {
     if (this.activeTopForm === form) {
@@ -348,12 +351,21 @@ export class SalesComponent implements OnInit {
 
   printOrder(order: OrderDto, format: 'a4' | '80mm' = 'a4'): void {
     this.error = '';
-    const printWindow = openPrintWindow();
+
+    if (order.billId) {
+      this.router.navigate(['/billing', order.billId, 'print'], {
+        queryParams: { format }
+      });
+      return;
+    }
 
     this.api.post<BillDto>(`/api/billing/orders/${order.id}/ensure`, {}).subscribe({
-      next: (bill) => openBillPrint(bill, printWindow, format),
+      next: (bill) => {
+        this.router.navigate(['/billing', bill.id, 'print'], {
+          queryParams: { format }
+        });
+      },
       error: (err) => {
-        closePrintWindow(printWindow);
         this.error = apiErrorMessage(err);
       }
     });
@@ -415,31 +427,5 @@ export class SalesComponent implements OnInit {
       },
       error: (error) => this.error = apiErrorMessage(error)
     });
-  }
-}
-
-function openPrintWindow(): Window | null {
-  const printWindow = window.open('', '_blank');
-  if (printWindow) {
-    printWindow.document.write('<!doctype html><title>Preparing bill</title><p>Preparing bill...</p>');
-    printWindow.document.close();
-  }
-
-  return printWindow;
-}
-
-function openBillPrint(bill: BillDto, printWindow: Window | null, format: 'a4' | '80mm' = 'a4'): void {
-  const url = `/billing/${bill.id}/print?format=${format}`;
-  if (printWindow && !printWindow.closed) {
-    printWindow.location.href = url;
-    return;
-  }
-
-  window.open(url, '_blank');
-}
-
-function closePrintWindow(printWindow: Window | null): void {
-  if (printWindow && !printWindow.closed) {
-    printWindow.close();
   }
 }

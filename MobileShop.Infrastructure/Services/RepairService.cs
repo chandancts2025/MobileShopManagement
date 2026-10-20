@@ -115,14 +115,29 @@ public class RepairService(MobileShopDbContext dbContext, IAuditLogService audit
 
         if (!string.IsNullOrWhiteSpace(customerEmail))
         {
-            await emailService.SendRepairTicketNotificationAsync(
-                customerEmail,
-                ticket.CustomerName,
-                ticket.TicketNumber,
-                $"{ticket.DeviceBrand} {ticket.DeviceModel}".Trim(),
-                ticket.Status.ToString(),
-                ticket.EstimatedCost,
-                cancellationToken);
+            var email = customerEmail;
+            var custName = ticket.CustomerName;
+            var tNum = ticket.TicketNumber;
+            var dev = $"{ticket.DeviceBrand} {ticket.DeviceModel}".Trim();
+            var st = ticket.Status.ToString();
+            var cost = ticket.EstimatedCost;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    await emailService.SendRepairTicketNotificationAsync(
+                        email,
+                        custName,
+                        tNum,
+                        dev,
+                        st,
+                        cost,
+                        cts.Token);
+                }
+                catch { }
+            });
         }
 
         return Map(ticket);
@@ -191,14 +206,29 @@ public class RepairService(MobileShopDbContext dbContext, IAuditLogService audit
 
         if (!string.IsNullOrWhiteSpace(customerEmail))
         {
-            await emailService.SendRepairTicketNotificationAsync(
-                customerEmail,
-                ticket.CustomerName,
-                ticket.TicketNumber,
-                $"{ticket.DeviceBrand} {ticket.DeviceModel}".Trim(),
-                ticket.Status.ToString(),
-                ticket.FinalAmount,
-                cancellationToken);
+            var email = customerEmail;
+            var custName = ticket.CustomerName;
+            var tNum = ticket.TicketNumber;
+            var dev = $"{ticket.DeviceBrand} {ticket.DeviceModel}".Trim();
+            var st = ticket.Status.ToString();
+            var finAmt = ticket.FinalAmount;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    await emailService.SendRepairTicketNotificationAsync(
+                        email,
+                        custName,
+                        tNum,
+                        dev,
+                        st,
+                        finAmt,
+                        cts.Token);
+                }
+                catch { }
+            });
         }
 
         return Map(ticket);

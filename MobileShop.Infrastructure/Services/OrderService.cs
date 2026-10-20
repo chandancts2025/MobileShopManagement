@@ -43,7 +43,8 @@ public class OrderService(MobileShopDbContext dbContext, IAuditLogService auditL
                 TaxAmount = x.TaxAmount,
                 DiscountAmount = x.DiscountAmount,
                 Status = x.Status,
-                CreatedAtUtc = x.CreatedAtUtc
+                CreatedAtUtc = x.CreatedAtUtc,
+                BillId = x.Bills.Select(b => (Guid?)b.Id).FirstOrDefault()
             })
             .ToListAsync(cancellationToken);
 
@@ -208,12 +209,28 @@ public class OrderService(MobileShopDbContext dbContext, IAuditLogService auditL
 
         if (customer?.User != null && !string.IsNullOrWhiteSpace(customer.User.Email))
         {
-            await emailService.SendOrderConfirmationAsync(
-                customer.User.Email,
-                customer.FullName,
-                order.OrderNumber,
-                order.TotalAmount,
-                cancellationToken);
+            var email = customer.User.Email;
+            var customerName = customer.FullName;
+            var ordNumber = order.OrderNumber;
+            var totalAmt = order.TotalAmount;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    await emailService.SendOrderConfirmationAsync(
+                        email,
+                        customerName,
+                        ordNumber,
+                        totalAmt,
+                        cts.Token);
+                }
+                catch
+                {
+                    // Error logging is handled inside EmailService
+                }
+            });
         }
 
         return new OrderDto
@@ -227,7 +244,8 @@ public class OrderService(MobileShopDbContext dbContext, IAuditLogService auditL
             TaxAmount = order.TaxAmount,
             DiscountAmount = order.DiscountAmount,
             Status = order.Status,
-            CreatedAtUtc = order.CreatedAtUtc
+            CreatedAtUtc = order.CreatedAtUtc,
+            BillId = bill.Id
         };
     }
 
@@ -278,12 +296,28 @@ public class OrderService(MobileShopDbContext dbContext, IAuditLogService auditL
 
         if (orderCustomer?.User != null && !string.IsNullOrWhiteSpace(orderCustomer.User.Email))
         {
-            await emailService.SendOrderStatusUpdateAsync(
-                orderCustomer.User.Email,
-                orderCustomer.FullName,
-                order.OrderNumber,
-                status.ToString(),
-                cancellationToken);
+            var email = orderCustomer.User.Email;
+            var customerName = orderCustomer.FullName;
+            var ordNumber = order.OrderNumber;
+            var statusStr = status.ToString();
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    await emailService.SendOrderStatusUpdateAsync(
+                        email,
+                        customerName,
+                        ordNumber,
+                        statusStr,
+                        cts.Token);
+                }
+                catch
+                {
+                    // Handled inside EmailService
+                }
+            });
         }
 
         return true;

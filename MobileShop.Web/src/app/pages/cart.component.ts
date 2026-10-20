@@ -15,6 +15,7 @@ export interface LocalOrderHistoryItem {
   orderNumber: string;
   totalAmount: number;
   createdAtUtc: string;
+  billId?: string;
 }
 
 @Component({
@@ -496,6 +497,14 @@ export class CartComponent implements OnInit {
   }
 
   private openBillForOrder(order: OrderDto, format: 'a4' | '80mm' = '80mm'): void {
+    if (order.billId) {
+      this.loading = false;
+      this.router.navigate(['/billing', order.billId, 'print'], {
+        queryParams: { format }
+      });
+      return;
+    }
+
     this.api.post<BillDto>(`/api/billing/orders/${order.id}/ensure`, {}).subscribe({
       next: (bill) => {
         this.loading = false;
@@ -534,7 +543,8 @@ function saveOrderHistory(order: OrderDto): void {
       id: order.id,
       orderNumber: order.orderNumber,
       totalAmount: order.totalAmount,
-      createdAtUtc: order.createdAtUtc
+      createdAtUtc: order.createdAtUtc,
+      billId: order.billId || undefined
     },
     ...current.filter((item) => item.id !== order.id)
   ].slice(0, 20);

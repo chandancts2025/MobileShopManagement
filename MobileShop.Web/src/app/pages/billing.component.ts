@@ -1222,7 +1222,17 @@ export class BillingComponent implements OnInit {
     // 1. Create order
     this.api.post<OrderDto>('/api/orders', orderPayload).subscribe({
       next: (order) => {
-        // 2. Ensure bill for order
+        if (order.billId) {
+          this.submittingQuickBill = false;
+          this.showQuickBillModal = false;
+          this.loadBills();
+          this.router.navigate(['/billing', order.billId, 'print'], {
+            queryParams: { format }
+          });
+          return;
+        }
+
+        // 2. Ensure bill for order (fallback)
         this.api.post<BillDto>(`/api/billing/orders/${order.id}/ensure`, {}).subscribe({
           next: (bill) => {
             this.submittingQuickBill = false;
