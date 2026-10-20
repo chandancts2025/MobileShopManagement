@@ -1,0 +1,12 @@
+**/.git
+**/.vs
+**/.vscode
+**/bin
+**/obj
+**/dist
+**/node_modules
+**/*.user
+**/*.suo
+**/TestResults
+MobileShop.Web
+scratch

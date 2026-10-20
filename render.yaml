@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: mobileshop-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: Jwt__SecretKey
+        generateValue: true
+      - key: Jwt__Issuer
+        value: MobileShop.Api
+      - key: Jwt__Audience
+        value: MobileShop.Angular
+      - key: AllowedOrigins
+        sync: false

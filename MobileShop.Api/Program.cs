@@ -73,6 +73,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 builder.Services.AddCors(options =>
 {
+    var customOrigins = builder.Configuration["AllowedOrigins"]?
+        .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? Array.Empty<string>();
+
     options.AddPolicy("frontend", policy =>
         policy.AllowAnyHeader()
             .AllowAnyMethod()
@@ -84,7 +87,11 @@ builder.Services.AddCors(options =>
                     return false;
                 }
 
-                return uri.Host == "localhost" || uri.Host == "127.0.0.1";
+                return uri.Host == "localhost" ||
+                       uri.Host == "127.0.0.1" ||
+                       uri.Host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase) ||
+                       uri.Host.EndsWith(".onrender.com", StringComparison.OrdinalIgnoreCase) ||
+                       customOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase);
             }));
 });
 

@@ -21,9 +21,9 @@ public class ContentSecurityPolicyMiddleware(RequestDelegate next)
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
                 "font-src 'self' data: https://fonts.gstatic.com; " +
                 "img-src 'self' data: blob: https://validator.swagger.io; " +
-                "connect-src 'self' http://localhost:* https://localhost:* http://127.0.0.1:* ws: wss:; " +
+                "connect-src 'self' http://localhost:* https://localhost:* http://127.0.0.1:* https://*.onrender.com https://*.vercel.app ws: wss:; " +
                 "object-src 'none'; " +
-                "frame-ancestors 'self' http://localhost:* http://127.0.0.1:*;";
+                "frame-ancestors 'self' http://localhost:* http://127.0.0.1:* https://*.vercel.app https://*.onrender.com;";
         }
         else
         {
