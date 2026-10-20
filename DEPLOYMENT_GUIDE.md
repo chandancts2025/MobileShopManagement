@@ -103,8 +103,10 @@ The repository is already equipped with:
    - Set the following settings:
      - **Name**: `mobileshop-api` (or your choice)
      - **Region**: Choose closest to you (e.g., Frankfurt or Oregon)
-     - **Branch**: your branch name (e.g., `main` or `antigravity-enhancement`)
-     - **Runtime**: **Docker** (Render will automatically detect the root `Dockerfile`)
+     - **Branch**: `antigravity-enhancement`
+     - **Root Directory**: Leave **BLANK / EMPTY** (Do not type `MobileShop.Api`; Docker must run from repo root)
+     - **Runtime**: **Docker** (Render will detect root `Dockerfile`)
+     - **Dockerfile Path**: Leave **blank** or `./Dockerfile`
      - **Plan**: **Free**
    - Scroll down to **Environment Variables** and add:
      | Key | Recommended Value | Note |
